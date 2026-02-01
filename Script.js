@@ -1,6 +1,7 @@
 // Dark Mode Toggle
 const themeBtn = document.getElementById("ThemBtn");
-const ViweBtn = document.getElementById
+const textEmail = "imrane2015su@gmial.com";
+const DiscordUser = "imax__max";
 
 themeBtn.addEventListener("click", () => {
   document.body.classList.toggle("dark-mode");
@@ -18,4 +19,12 @@ const observer = new IntersectionObserver(entries => {
 fadeElements.forEach(el => observer.observe(el));
 
 
+function copyEmail() {
+  navigator.clipboard.writeText(textEmail);
+  alert("Copy Email");
+};
 
+function copyDiscord() {
+  navigator.clipboard.writeText(DiscordUser);
+  alert("Copy Discord User");
+};
