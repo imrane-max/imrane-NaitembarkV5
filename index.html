@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
   <meta charset="UTF-8">
   <title>Imrane | Portfolio</title>
   <link rel="stylesheet" href="style.css">
@@ -8,15 +9,21 @@
 <body>
 
   <!-- Navbar -->
-  <nav class="navbar fade-in">
-    <h2>Imrane Naitembark</h2>
-    <ul>
-      <li><button id="ThemBtn" class="btn">Dark</button></li>
+  <nav class="navbar fade-in" role="navigation" aria-label="Primary">
+    <div class="nav-brand">
+      <h2><a href="#">Imrane Naitembark</a></h2>
+    </div>
+    <ul class="nav-links">
       <li><a href="#about">About</a></li>
       <li><a href="#skills">Skills</a></li>
       <li><a href="#projects">Projects</a></li>
       <li><a href="#contact">Contact</a></li>
     </ul>
+    <div class="nav-actions">
+      <button id="ThemBtn" class="btn" aria-pressed="false" title="Toggle theme">
+        <i class="fa-solid fa-moon"></i> <span class="theme-label">Dark</span>
+      </button>
+    </div>
   </nav>
 
   <!-- Hero Section -->
@@ -101,8 +108,20 @@
   <!-- Contact Section -->
   <section id="contact" class="section gray fade-in">
     <h2>Contact</h2>
-    <button class="btn" onclick="copyEmail()">Email: imrane2015su@gmial.com</button>
-    <button class="btn" ><a href="https://discordapp.com/users/1409606893772738764"></a>Discord: imax__maxe</button>
+    <div class="contact-actions">
+      <button class="btn" onclick="copyEmail(event)" aria-label="Copy email to clipboard">
+        <i class="fa-solid fa-envelope"></i>
+        <span class="contact-text">imrane2015su@gmial.com</span>
+      </button>
+
+      <a class="btn" href="mailto:imrane2015su@gmial.com" aria-label="Send email">
+        <i class="fa-solid fa-paper-plane"></i> Send Email
+      </a>
+
+      <a class="btn" href="https://discordapp.com/users/1409606893772738764" target="_blank" rel="noopener" aria-label="Open Discord profile">
+        <i class="fa-brands fa-discord"></i> Discord: imax__maxe
+      </a>
+    </div>
   </section>
 
   <!-- Footer -->
@@ -111,5 +130,5 @@
   </footer>
 
   <script src="Script.js"></script>
-</body>
+</body> 
 </html>
