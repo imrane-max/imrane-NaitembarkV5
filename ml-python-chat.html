@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Python Chatbot - TF-IDF + Learning</title>
+    <script async src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #1e1e2e;
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 750px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            flex-direction: column;
+            max-height: 95vh;
+            border: 1px solid #3a3a5a;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 5px;
+            color: #00d4ff;
+            animation: fadeIn 0.8s;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #8888aa;
+            font-size: 12px;
+            margin-bottom: 15px;
+            animation: fadeIn 0.8s 0.2s both;
+        }
+
+        .info-banner {
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            border-left: 4px solid #00d4ff;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #a0d2ff;
+            margin-bottom: 15px;
+            animation: slideInUp 0.5s;
+        }
+
+        .chat-box {
+            background: #12121a;
+            border-radius: 15px;
+            padding: 15px;
+            height: 350px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            animation: scaleIn 0.5s 0.3s both;
+            border: 1px solid #2a2a4a;
+        }
+
+        .chat-box::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-box::-webkit-scrollbar-track {
+            background: #1e1e2e;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb {
+            background: #00d4ff;
+            border-radius: 3px;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            animation: slideInUp 0.3s ease;
+        }
+
+        .user-msg {
+            text-align: right;
+        }
+
+        .user-msg .text {
+            background: linear-gradient(135deg, #00d4ff, #007bff);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 15px 15px 5px 15px;
+            display: inline-block;
+            max-width: 80%;
+            word-wrap: break-word;
+            font-size: 13px;
+        }
+
+        .ai-msg .text {
+            background: #2a2a4a;
+            color: #e0e0e0;
+            padding: 10px 14px;
+            border-radius: 15px 15px 15px 5px;
+            display: inline-block;
+            max-width: 80%;
+            word-wrap: break-word;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+
+        .ai-msg {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .ai-avatar {
+            font-size: 20px;
+            background: #00d4ff22;
+            padding: 5px;
+            border-radius: 50%;
+        }
+
+        .confidence {
+            font-size: 10px;
+            color: #6a6a8a;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .conf-bar {
+            height: 4px;
+            background: #2a2a4a;
+            border-radius: 2px;
+            width: 100px;
+            overflow: hidden;
+        }
+
+        .conf-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #007bff);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .input-section {
+            display: flex;
+            gap: 10px;
+            animation: fadeIn 0.6s 0.4s both;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #3a3a5a;
+            border-radius: 10px;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            background: #12121a;
+            color: #e0e0e0;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+
+        input::placeholder {
+            color: #6a6a8a;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .send-btn, .learn-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #00d4ff, #007bff);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .learn-btn {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            font-size: 12px;
+            padding: 12px 15px;
+        }
+
+        .send-btn:hover, .learn-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .send-btn:active, .learn-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-btn:disabled, .learn-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            background: #12121a;
+            padding: 12px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+            animation: fadeIn 0.6s 0.5s both;
+            font-size: 11px;
+            border: 1px solid #2a2a4a;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #6a6a8a;
+            font-weight: 600;
+            margin-bottom: 3px;
+            font-size: 10px;
+        }
+
+        .stat-value {
+            color: #00d4ff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #00d4ff;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        .loading.dot2 { animation-delay: 0.2s; }
+        .loading.dot3 { animation-delay: 0.4s; }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: rgba(30, 30, 46, 0.9);
+            border: 1px solid #3a3a5a;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #00d4ff;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: #2a2a4a;
+            transform: translateX(-5px);
+        }
+
+        .learn-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .learn-modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1e1e2e;
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid #3a3a5a;
+        }
+
+        .modal-content h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+        }
+
+        .modal-content input, .modal-content textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #3a3a5a;
+            border-radius: 8px;
+            background: #12121a;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+
+        .modal-content textarea {
+            height: 80px;
+            resize: none;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .modal-buttons .confirm {
+            background: linear-gradient(135deg, #00d4ff, #007bff);
+            color: white;
+        }
+
+        .modal-buttons .cancel {
+            background: #3a3a5a;
+            color: #e0e0e0;
+        }
+
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    
+    <div class="container">
+        <h1>🧠 ML Python Chatbot</h1>
+        <p class="subtitle">TF-IDF + Cosine Similarity + Learning Mode • Powered by Pyodide</p>
+
+        <div class="info-banner">
+            🐍 Real Python ML running in your browser! Uses TF-IDF vectorization, cosine similarity matching, stopword removal, and can learn new responses from you!
+        </div>
+
+        <div class="chat-box" id="chatBox"></div>
+
+        <div class="input-section">
+            <input 
+                type="text" 
+                id="userInput" 
+                placeholder="Ask about projects, skills, AI/ML..." 
+                onkeypress="handleKeyPress(event)"
+            >
+            <div class="btn-group">
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+                <button class="learn-btn" id="learnBtn" onclick="openLearnModal()">🎓 Teach</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Messages</div>
+                <div class="stat-value" id="msgCount">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Avg Confidence</div>
+                <div class="stat-value" id="avgConf">0%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Vocabulary</div>
+                <div class="stat-value" id="vocabSize">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Learned</div>
+                <div class="stat-value" id="learnedCount">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Learn Modal -->
+    <div class="learn-modal" id="learnModal">
+        <div class="modal-content">
+            <h3>🎓 Teach Me Something New</h3>
+            <input type="text" id="learnPhrase" placeholder="Enter a phrase/question...">
+            <textarea id="learnResponse" placeholder="Enter the response I should give..."></textarea>
+            <div class="modal-buttons">
+                <button class="cancel" onclick="closeLearnModal()">Cancel</button>
+                <button class="confirm" onclick="submitLearn()">Teach</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pyodide;
+        let chatReady = false;
+        let messageCount = 0;
+        let confidenceSum = 0;
+
+        async function initPyodide() {
+            addMessage('system', '⏳ Loading Python ML engine...');
+            
+            pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/",
+            });
+
+            const pythonCode = `
+import re
+import math
+from collections import Counter, defaultdict
+
+class TFIDF:
+    """TF-IDF Vectorizer for text similarity"""
+    
+    def __init__(self):
+        self.documents = []
+        self.vocabulary = set()
+        self.idf = {}
+        self.doc_vectors = []
+    
+    def tokenize(self, text):
+        text = text.lower()
+        tokens = re.findall(r'\\b[a-z]+\\b', text)
+        stopwords = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
+                     'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+                     'would', 'could', 'should', 'may', 'might', 'can', 'to',
+                     'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as',
+                     'into', 'through', 'during', 'before', 'after', 'above',
+                     'below', 'between', 'under', 'again', 'further', 'then',
+                     'once', 'here', 'there', 'when', 'where', 'why', 'how',
+                     'all', 'each', 'few', 'more', 'most', 'other', 'some',
+                     'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so',
+                     'than', 'too', 'very', 'just', 'and', 'but', 'if', 'or',
+                     'because', 'until', 'while', 'this', 'that', 'these',
+                     'those', 'am', 'it', 'its', 'i', 'me', 'my', 'myself',
+                     'we', 'our', 'ours', 'you', 'your', 'yours', 'he', 'him',
+                     'his', 'she', 'her', 'hers', 'they', 'them', 'their',
+                     'what', 'which', 'who', 'whom'}
+        return [t for t in tokens if t not in stopwords and len(t) > 1]
+    
+    def fit(self, documents):
+        self.documents = documents
+        doc_count = len(documents)
+        term_doc_freq = defaultdict(int)
+        
+        for doc in documents:
+            tokens = set(self.tokenize(doc))
+            self.vocabulary.update(tokens)
+            for token in tokens:
+                term_doc_freq[token] += 1
+        
+        for term in self.vocabulary:
+            self.idf[term] = math.log(doc_count / (term_doc_freq[term] + 1)) + 1
+        
+        self.doc_vectors = [self._compute_tfidf(doc) for doc in documents]
+    
+    def _compute_tfidf(self, text):
+        tokens = self.tokenize(text)
+        if not tokens:
+            return {}
+        
+        tf = Counter(tokens)
+        max_tf = max(tf.values()) if tf else 1
+        
+        vector = {}
+        for term, count in tf.items():
+            if term in self.idf:
+                vector[term] = (count / max_tf) * self.idf[term]
+        return vector
+    
+    def cosine_similarity(self, vec1, vec2):
+        if not vec1 or not vec2:
+            return 0.0
+        
+        common_terms = set(vec1.keys()) & set(vec2.keys())
+        if not common_terms:
+            return 0.0
+        
+        dot_product = sum(vec1[t] * vec2[t] for t in common_terms)
+        mag1 = math.sqrt(sum(v ** 2 for v in vec1.values()))
+        mag2 = math.sqrt(sum(v ** 2 for v in vec2.values()))
+        
+        if mag1 == 0 or mag2 == 0:
+            return 0.0
+        
+        return dot_product / (mag1 * mag2)
+    
+    def find_most_similar(self, query, threshold=0.1):
+        query_vector = self._compute_tfidf(query)
+        
+        best_idx = -1
+        best_score = threshold
+        
+        for idx, doc_vector in enumerate(self.doc_vectors):
+            score = self.cosine_similarity(query_vector, doc_vector)
+            if score > best_score:
+                best_score = score
+                best_idx = idx
+        
+        return best_idx, best_score
+
+
+class MLChatbot:
+    def __init__(self):
+        self.learned_responses = {}
+        
+        self.ml_knowledge = [
+            ("hello hi hey greetings hola welcome", [
+                "Hello! 👋 I'm Imrane's ML-powered chatbot using TF-IDF!",
+                "Hi there! 😊 I'm Imrane's assistant. Ask about projects, skills, or ML!",
+                "Hey! Welcome to Imrane's portfolio! I use cosine similarity to understand you!"
+            ]),
+            ("project projects game games build built code portfolio work", [
+                "🎮 I have built 12+ games: Snake, 2048, RPS AI, Memory Match, ML games, Godot games!",
+                "📦 My portfolio: vanilla JS games, Canvas API, Godot Engine, Python AI!",
+                "🎯 Check the Games section for playable demos with AI opponents!"
+            ]),
+            ("skill skills technology tech language languages python javascript", [
+                "💻 Skills: JavaScript, Python, HTML/CSS, Canvas API, Godot, ML/AI!",
+                "🛠️ Tech stack: Vanilla JS, Python (ML), Godot GDScript, WebAssembly!",
+                "⚙️ I work with: Neural Networks, TF-IDF, Pattern Recognition, NLP!"
+            ]),
+            ("ai artificial intelligence machine learning ml neural network algorithm", [
+                "🤖 AI/ML is my passion! I built neural networks, digit classifiers, learning algorithms!",
+                "🧠 This chatbot uses TF-IDF + Cosine Similarity - real ML in your browser!",
+                "🎓 I implement: TF-IDF vectorization, cosine similarity, backpropagation!"
+            ]),
+            ("contact email reach message connect", [
+                "📧 Email: imrane2015su@gmail.com - Let's connect!",
+                "💌 Reach me at: imrane2015su@gmail.com for collaborations!",
+                "🤝 Contact: imrane2015su@gmail.com - Always happy to chat!"
+            ]),
+            ("chatbot bot how work algorithm yourself about explain tfidf", [
+                "🤖 I use TF-IDF (Term Frequency-Inverse Document Frequency) to convert text to vectors!",
+                "🧠 My algorithm: tokenize → remove stopwords → compute TF-IDF → cosine similarity!",
+                "📊 I find the most similar training phrase and return its response. You can teach me too!"
+            ]),
+            ("python pyodide webassembly browser", [
+                "🐍 I'm real Python running via Pyodide (WebAssembly)!",
+                "💻 No server needed - Python ML runs directly in your browser!",
+                "🌐 Pyodide compiles Python to WebAssembly for browser execution!"
+            ]),
+            ("learn teach train new response", [
+                "🎓 Click the 'Teach' button to teach me new phrases and responses!",
+                "📚 I can learn from you! Use the teach feature to expand my knowledge!",
+                "🧠 My knowledge grows when you teach me - try the Teach button!"
+            ])
+        ]
+        
+        self.tfidf = TFIDF()
+        self._train_tfidf()
+    
+    def _train_tfidf(self):
+        training_docs = [phrase for phrase, _ in self.ml_knowledge]
+        for phrase in self.learned_responses.keys():
+            training_docs.append(phrase)
+        self.tfidf.fit(training_docs)
+    
+    def learn(self, phrase, response):
+        processed = phrase.lower().strip()
+        if processed not in self.learned_responses:
+            self.learned_responses[processed] = []
+        self.learned_responses[processed].append(response)
+        self._train_tfidf()
+        return True
+    
+    def chat(self, user_input):
+        processed = user_input.lower().strip()
+        
+        best_idx, confidence = self.tfidf.find_most_similar(processed, threshold=0.15)
+        
+        if best_idx >= 0:
+            num_knowledge = len(self.ml_knowledge)
+            if best_idx >= num_knowledge:
+                learned_idx = best_idx - num_knowledge
+                learned_phrase = list(self.learned_responses.keys())[learned_idx]
+                responses = self.learned_responses[learned_phrase]
+            else:
+                _, responses = self.ml_knowledge[best_idx]
+            
+            import random
+            response = random.choice(responses)
+            return response, confidence
+        
+        fallbacks = [
+            "🤔 Interesting! Try asking about projects, skills, or AI/ML.",
+            "💭 I'm not sure about that. Ask about my portfolio or teach me!",
+            "✨ My ML couldn't find a match. Try keywords like 'skills', 'games', 'AI'!",
+            "🎯 Use the Teach button to help me learn new topics!"
+        ]
+        import random
+        return random.choice(fallbacks), 0.0
+    
+    def get_stats(self):
+        return {
+            'vocabulary': len(self.tfidf.vocabulary),
+            'learned': len(self.learned_responses)
+        }
+
+chatbot = MLChatbot()
+`;
+
+            await pyodide.runPythonAsync(pythonCode);
+            chatReady = true;
+            
+            // Remove loading message
+            document.getElementById('chatBox').innerHTML = '';
+            
+            // Update initial stats
+            updateStats();
+            
+            addMessage('ai', '🧠 ML Engine loaded! I use TF-IDF + Cosine Similarity. Ask me anything or teach me something new!', 1.0);
+        }
+
+        function addMessage(sender, text, confidence = null) {
+            const chatBox = document.getElementById('chatBox');
+            const msgDiv = document.createElement('div');
+            
+            if (sender === 'system') {
+                msgDiv.className = 'message ai-msg';
+                msgDiv.innerHTML = `<span class="ai-avatar">⚙️</span><div class="text">${text}</div>`;
+            } else if (sender === 'user') {
+                msgDiv.className = 'message user-msg';
+                msgDiv.innerHTML = `<div class="text">${escapeHtml(text)}</div>`;
+            } else {
+                msgDiv.className = 'message ai-msg';
+                let html = `<span class="ai-avatar">🤖</span><div><div class="text">${text}</div>`;
+                if (confidence !== null) {
+                    const confPercent = Math.round(confidence * 100);
+                    html += `<div class="confidence">
+                        <span>Confidence: ${confPercent}%</span>
+                        <div class="conf-bar"><div class="conf-fill" style="width: ${confPercent}%"></div></div>
+                    </div>`;
+                }
+                html += `</div>`;
+                msgDiv.innerHTML = html;
+            }
+
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function updateStats() {
+            try {
+                const stats = await pyodide.runPythonAsync(`
+import json
+json.dumps(chatbot.get_stats())
+`);
+                const data = JSON.parse(stats);
+                document.getElementById('vocabSize').textContent = data.vocabulary;
+                document.getElementById('learnedCount').textContent = data.learned;
+            } catch (e) {
+                console.error('Stats error:', e);
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const text = input.value.trim();
+
+            if (!text || !chatReady) return;
+
+            addMessage('user', text);
+            input.value = '';
+            sendBtn.disabled = true;
+            messageCount++;
+
+            // Show loading
+            const chatBox = document.getElementById('chatBox');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message ai-msg';
+            loadingDiv.id = 'loading';
+            loadingDiv.innerHTML = `
+                <span class="ai-avatar">🤖</span>
+                <div class="text">
+                    <span class="loading"></span>
+                    <span class="loading dot2"></span>
+                    <span class="loading dot3"></span>
+                </div>
+            `;
+            chatBox.appendChild(loadingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            setTimeout(async () => {
+                try {
+                    const response = await pyodide.runPythonAsync(`
+import json
+result = chatbot.chat("""${text.replace(/"/g, '\\"')}""")
+json.dumps({
+    'response': result[0],
+    'confidence': float(result[1])
+})
+`);
+                    const data = JSON.parse(response);
+                    document.getElementById('loading').remove();
+                    addMessage('ai', data.response, data.confidence);
+                    
+                    // Update stats
+                    confidenceSum += data.confidence;
+                    document.getElementById('msgCount').textContent = messageCount;
+                    const avgConfidence = Math.round(confidenceSum / messageCount * 100);
+                    document.getElementById('avgConf').textContent = avgConfidence + '%';
+                    await updateStats();
+                } catch (error) {
+                    document.getElementById('loading')?.remove();
+                    addMessage('ai', '❌ Error processing. Please try again!');
+                    console.error(error);
+                }
+                sendBtn.disabled = false;
+                input.focus();
+            }, 400);
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                sendMessage();
+            }
+        }
+
+        function openLearnModal() {
+            document.getElementById('learnModal').classList.add('active');
+            document.getElementById('learnPhrase').focus();
+        }
+
+        function closeLearnModal() {
+            document.getElementById('learnModal').classList.remove('active');
+            document.getElementById('learnPhrase').value = '';
+            document.getElementById('learnResponse').value = '';
+        }
+
+        async function submitLearn() {
+            const phrase = document.getElementById('learnPhrase').value.trim();
+            const response = document.getElementById('learnResponse').value.trim();
+
+            if (!phrase || !response || !chatReady) {
+                alert('Please enter both a phrase and response!');
+                return;
+            }
+
+            try {
+                await pyodide.runPythonAsync(`
+chatbot.learn("""${phrase.replace(/"/g, '\\"')}""", """${response.replace(/"/g, '\\"')}""")
+`);
+                closeLearnModal();
+                addMessage('ai', `✅ Learned! I'll remember "${phrase.substring(0, 30)}..." for next time!`, 1.0);
+                await updateStats();
+            } catch (error) {
+                alert('Error learning. Please try again!');
+                console.error(error);
+            }
+        }
+
+        window.addEventListener('load', initPyodide);
+    </script>
+</body>
+</html>

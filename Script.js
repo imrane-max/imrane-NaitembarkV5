@@ -277,7 +277,7 @@ const headerObserver = new IntersectionObserver(entries => {
 sectionHeaders.forEach(header => headerObserver.observe(header));
 
 // ===========================
-// Llama LLM-Powered Chatbot (Model-Free Open-Source)
+// Python ML Chatbot (TF-IDF + Cosine Similarity) with Learning
 // ===========================
 const chatToggle = document.getElementById('chat-toggle');
 const chatWidget = document.getElementById('chat-widget');
@@ -285,6 +285,281 @@ const chatClose = document.getElementById('chat-close');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatMessages = document.getElementById('chat-messages');
+const chatTeach = document.getElementById('chat-teach');
+const learnModal = document.getElementById('learn-modal');
+const learnPhrase = document.getElementById('learn-phrase');
+const learnResponse = document.getElementById('learn-response');
+const learnCancel = document.getElementById('learn-cancel');
+const learnSave = document.getElementById('learn-save');
+const learnedCountEl = document.getElementById('learned-count');
+const mlStatusEl = document.getElementById('ml-status');
+
+let pyodide = null;
+let mlChatReady = false;
+
+// Database: Load learned responses from localStorage
+function loadLearnedData() {
+  try {
+    const data = localStorage.getItem('ml-chatbot-learned');
+    return data ? JSON.parse(data) : {};
+  } catch (e) { return {}; }
+}
+
+// Database: Save learned responses to localStorage
+function saveLearnedData(data) {
+  try {
+    localStorage.setItem('ml-chatbot-learned', JSON.stringify(data));
+  } catch (e) { console.error('Failed to save learned data:', e); }
+}
+
+// Update learned count display
+function updateLearnedCount() {
+  const data = loadLearnedData();
+  const count = Object.keys(data).length;
+  if (learnedCountEl) learnedCountEl.textContent = count;
+}
+
+// Update ML status display
+function updateMLStatus(status) {
+  if (mlStatusEl) mlStatusEl.textContent = status;
+}
+
+// Initialize Python ML Chatbot with Learning
+async function initMLChatbot() {
+  updateMLStatus('Loading...');
+  try {
+    pyodide = await loadPyodide({
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/",
+    });
+
+    const pythonCode = `
+import re
+import math
+from collections import Counter, defaultdict
+
+class TFIDF:
+    def __init__(self):
+        self.documents = []
+        self.vocabulary = set()
+        self.idf = {}
+        self.doc_vectors = []
+    
+    def tokenize(self, text):
+        text = text.lower()
+        tokens = re.findall(r'\\b[a-z]+\\b', text)
+        stopwords = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
+                     'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+                     'would', 'could', 'should', 'may', 'might', 'can', 'to',
+                     'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as',
+                     'into', 'through', 'during', 'before', 'after', 'above',
+                     'below', 'between', 'under', 'again', 'further', 'then',
+                     'once', 'here', 'there', 'when', 'where', 'why', 'how',
+                     'all', 'each', 'few', 'more', 'most', 'other', 'some',
+                     'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so',
+                     'than', 'too', 'very', 'just', 'and', 'but', 'if', 'or',
+                     'because', 'until', 'while', 'this', 'that', 'these',
+                     'those', 'am', 'it', 'its', 'i', 'me', 'my', 'myself',
+                     'we', 'our', 'ours', 'you', 'your', 'yours', 'he', 'him',
+                     'his', 'she', 'her', 'hers', 'they', 'them', 'their',
+                     'what', 'which', 'who', 'whom'}
+        return [t for t in tokens if t not in stopwords and len(t) > 1]
+    
+    def fit(self, documents):
+        self.documents = documents
+        doc_count = len(documents)
+        term_doc_freq = defaultdict(int)
+        
+        for doc in documents:
+            tokens = set(self.tokenize(doc))
+            self.vocabulary.update(tokens)
+            for token in tokens:
+                term_doc_freq[token] += 1
+        
+        for term in self.vocabulary:
+            self.idf[term] = math.log(doc_count / (term_doc_freq[term] + 1)) + 1
+        
+        self.doc_vectors = [self._compute_tfidf(doc) for doc in documents]
+    
+    def _compute_tfidf(self, text):
+        tokens = self.tokenize(text)
+        if not tokens:
+            return {}
+        tf = Counter(tokens)
+        max_tf = max(tf.values()) if tf else 1
+        vector = {}
+        for term, count in tf.items():
+            if term in self.idf:
+                vector[term] = (count / max_tf) * self.idf[term]
+        return vector
+    
+    def cosine_similarity(self, vec1, vec2):
+        if not vec1 or not vec2:
+            return 0.0
+        common_terms = set(vec1.keys()) & set(vec2.keys())
+        if not common_terms:
+            return 0.0
+        dot_product = sum(vec1[t] * vec2[t] for t in common_terms)
+        mag1 = math.sqrt(sum(v ** 2 for v in vec1.values()))
+        mag2 = math.sqrt(sum(v ** 2 for v in vec2.values()))
+        if mag1 == 0 or mag2 == 0:
+            return 0.0
+        return dot_product / (mag1 * mag2)
+    
+    def find_most_similar(self, query, threshold=0.1):
+        query_vector = self._compute_tfidf(query)
+        best_idx = -1
+        best_score = threshold
+        for idx, doc_vector in enumerate(self.doc_vectors):
+            score = self.cosine_similarity(query_vector, doc_vector)
+            if score > best_score:
+                best_score = score
+                best_idx = idx
+        return best_idx, best_score
+
+class MLChatbot:
+    def __init__(self):
+        self.learned_responses = {}  # Database for learned responses
+        self.ml_knowledge = [
+            ("hello hi hey greetings hola welcome", [
+                "Hello! \ud83d\udc4b I'm Imrane's ML-powered chatbot using TF-IDF!",
+                "Hi there! \ud83d\ude0a I'm Imrane's assistant. Ask about projects, skills, or games!",
+                "Hey! Welcome to Imrane's portfolio! I use cosine similarity to understand you!"
+            ]),
+            ("project projects game games build built code portfolio work", [
+                "\ud83c\udfae I have built 12+ games: Snake, 2048, RPS AI, Memory Match, ML games!",
+                "\ud83d\udce6 My portfolio: vanilla JS games, Canvas API, Godot Engine, Python AI!",
+                "\ud83c\udfaf Check the Games section for playable demos with AI opponents!"
+            ]),
+            ("skill skills technology tech language languages python javascript", [
+                "\ud83d\udcbb Skills: JavaScript, Python, HTML/CSS, Canvas API, Godot, ML/AI!",
+                "\ud83d\udee0\ufe0f Tech stack: Vanilla JS, Python (ML), Godot GDScript, WebAssembly!",
+                "\u2699\ufe0f I work with: Neural Networks, TF-IDF, Pattern Recognition, NLP!"
+            ]),
+            ("ai artificial intelligence machine learning ml neural network algorithm", [
+                "\ud83e\udd16 AI/ML is my passion! I built neural networks, digit classifiers!",
+                "\ud83e\udde0 This chat uses TF-IDF + Cosine Similarity - real ML!",
+                "\ud83c\udf93 I implement: TF-IDF vectorization, cosine similarity, backpropagation!"
+            ]),
+            ("contact email reach message connect", [
+                "\ud83d\udce7 Email: imrane2015su@gmail.com - Let's connect!",
+                "\ud83d\udc8c Reach me at: imrane2015su@gmail.com for collaborations!",
+                "\ud83e\udd1d Contact: imrane2015su@gmail.com - Always happy to chat!"
+            ]),
+            ("chatbot bot how work algorithm yourself about explain tfidf", [
+                "\ud83e\udd16 I use TF-IDF to convert text to vectors!",
+                "\ud83e\udde0 My algorithm: tokenize \u2192 remove stopwords \u2192 TF-IDF \u2192 cosine similarity!",
+                "\ud83d\udcca I find the most similar training phrase and return its response!"
+            ]),
+            ("time duration long much weeks days timeline", [
+                "\u23f1\ufe0f Project times: Simple games 1 week, complex 2-3 weeks, large 3-4 weeks.",
+                "\ud83d\udcc5 Most projects take 2-3 weeks depending on complexity."
+            ])
+        ]
+        self.tfidf = TFIDF()
+        self._train_tfidf()
+    
+    def _train_tfidf(self):
+        training_docs = [phrase for phrase, _ in self.ml_knowledge]
+        # Add learned responses to training
+        for phrase in self.learned_responses.keys():
+            training_docs.append(phrase)
+        self.tfidf.fit(training_docs)
+    
+    def learn(self, phrase, response):
+        """Learn a new phrase-response pair and save to database"""
+        processed = phrase.lower().strip()
+        if processed not in self.learned_responses:
+            self.learned_responses[processed] = []
+        self.learned_responses[processed].append(response)
+        self._train_tfidf()  # Retrain with new data
+        return len(self.learned_responses)
+    
+    def load_learned(self, data):
+        """Load learned responses from external storage"""
+        self.learned_responses = data
+        self._train_tfidf()
+    
+    def chat(self, user_input):
+        processed = user_input.lower().strip()
+        best_idx, confidence = self.tfidf.find_most_similar(processed, threshold=0.15)
+        
+        if best_idx >= 0:
+            num_base = len(self.ml_knowledge)
+            if best_idx >= num_base:
+                # It's a learned response
+                learned_idx = best_idx - num_base
+                learned_phrase = list(self.learned_responses.keys())[learned_idx]
+                responses = self.learned_responses[learned_phrase]
+            else:
+                # Base knowledge
+                _, responses = self.ml_knowledge[best_idx]
+            import random
+            response = random.choice(responses)
+            return response, confidence
+        
+        fallbacks = [
+            "\ud83e\udd14 Interesting! Try asking about projects, skills, or games.",
+            "\ud83d\udcad Ask me about AI/ML, games, or contact info!",
+            "\u2728 Try keywords like 'skills', 'games', 'AI', or 'contact'!",
+            "\ud83c\udf93 Click the teach button (\ud83c\udf93) to help me learn new things!"
+        ]
+        import random
+        return random.choice(fallbacks), 0.0
+
+chatbot = MLChatbot()
+`;
+
+    await pyodide.runPythonAsync(pythonCode);
+    
+    // Load learned data from localStorage and inject into Python
+    const learnedData = loadLearnedData();
+    if (Object.keys(learnedData).length > 0) {
+      const dataJson = JSON.stringify(learnedData);
+      await pyodide.runPythonAsync(`
+import json
+learned_data = json.loads('${dataJson.replace(/'/g, "\\'")}')
+chatbot.load_learned(learned_data)
+`);
+    }
+    
+    mlChatReady = true;
+    updateMLStatus('Ready \u2713');
+    updateLearnedCount();
+    console.log('\ud83e\udde0 ML Chatbot loaded successfully!');
+  } catch (error) {
+    console.error('ML Chatbot failed to load:', error);
+    mlChatReady = false;
+    updateMLStatus('Error');
+  }
+}
+
+// Teach the bot a new response
+async function teachBot(phrase, response) {
+  if (!mlChatReady || !pyodide) {
+    showToast('ML not ready yet!');
+    return false;
+  }
+  
+  try {
+    // Teach Python chatbot
+    await pyodide.runPythonAsync(`
+chatbot.learn("""${phrase.replace(/"/g, '\\"')}""", """${response.replace(/"/g, '\\"')}""")
+`);
+    
+    // Save to localStorage database
+    const data = loadLearnedData();
+    const key = phrase.toLowerCase().trim();
+    if (!data[key]) data[key] = [];
+    data[key].push(response);
+    saveLearnedData(data);
+    
+    updateLearnedCount();
+    return true;
+  } catch (error) {
+    console.error('Learn error:', error);
+    return false;
+  }
+}
 
 // Load chat history from sessionStorage
 function loadChatHistory() {
@@ -299,73 +574,64 @@ function saveChatHistory(history) {
   try { sessionStorage.setItem('chat-history', JSON.stringify(history)); } catch (e) {}
 }
 
-function renderMessage(role, text) {
+function renderMessage(role, text, confidence = null) {
   const wrapper = document.createElement('div');
   wrapper.className = `chat-message ${role}`;
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.innerHTML = text;
+  if (role === 'bot' && confidence !== null && confidence > 0) {
+    const confSpan = document.createElement('div');
+    confSpan.style.cssText = 'font-size:10px;color:#888;margin-top:4px;';
+    confSpan.textContent = `Confidence: ${Math.round(confidence * 100)}%`;
+    bubble.appendChild(confSpan);
+  }
   wrapper.appendChild(bubble);
   chatMessages.appendChild(wrapper);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Local Llama-inspired response generation
-function getLlamaResponse(text) {
+// Fallback for when ML is not ready
+function getFallbackResponse(text) {
   const lower = text.toLowerCase();
-  
-  // Knowledge responses (Llama-like)
   const responses = {
-    'project|game|build|code|portfolio': [
-      "I have built 12+ games including Snake, 2048, Rock Paper Scissors AI, Memory Match, Reaction Time, Tic Tac Toe, and ML-powered games!",
-      "Check the Games section to play React projects, Canvas games with Godot, and Python AI games!"
-    ],
-    'skill|tech|technology|language|javascript|python': [
-      "I'm skilled in JavaScript, Python, HTML, CSS, Canvas API, Godot GDScript, and Machine Learning!",
-      "My tech stack: Vanilla JS, Python (ML/Data), Godot Engine, WebAssembly, Neural Networks, TensorFlow concepts"
-    ],
-    'ai|machine learning|ml|neural|llama': [
-      "AI/ML is my passion! I built neural networks, digit classifiers, and learning algorithms!",
-      "I use Llama (open-source LLM) for this chat, plus TF-IDF, cosine similarity, and pattern recognition!"
-    ],
-    'contact|email|reach|message': [
-      "Contact me at: imrane2015su@gmail.com for collaborations and opportunities!",
-      "Email: imrane2015su@gmail.com - I'm always happy to discuss projects!"
-    ],
-    'hello|hi|hey|greetings': [
-      "Hello! I'm a Llama-powered AI assistant. What would you like to know about my portfolio?",
-      "Hi there! Welcome! Ask me about my games, skills, or AI/ML work!"
-    ],
-    'time|duration|how long': [
-      "Most projects take 2-3 weeks. Games typically take 1-2 weeks, larger projects take 3-4 weeks.",
-      "Project timelines vary: simple games are 1 week, complex projects are 3-4 weeks."
-    ]
+    'project|game|build': "\ud83c\udfae I have 12+ games! Check the Games section.",
+    'skill|tech|python|javascript': "\ud83d\udcbb Skills: JS, Python, Godot, ML, Canvas API!",
+    'ai|machine learning|ml': "\ud83e\udd16 AI/ML is my passion! TF-IDF, neural networks!",
+    'contact|email': "\ud83d\udce7 Email: imrane2015su@gmail.com",
+    'hello|hi|hey': "Hello! \ud83d\udc4b Ask me about my portfolio!"
   };
-
-  // Find matching response
-  for (const [keywords, replies] of Object.entries(responses)) {
-    for (const keyword of keywords.split('|')) {
-      if (lower.includes(keyword)) {
-        return replies[Math.floor(Math.random() * replies.length)];
-      }
+  for (const [keywords, reply] of Object.entries(responses)) {
+    for (const kw of keywords.split('|')) {
+      if (lower.includes(kw)) return reply;
     }
   }
+  return "\u2728 Ask about my projects, skills, or games!";
+}
 
-  // Fallback responses
-  const fallbacks = [
-    "That's interesting! Tell me more about what interests you!",
-    "I see! You can also check the Games or Code Examples sections!",
-    "Great question! Feel free to ask about my projects, skills, or experience!",
-    "I appreciate that! Is there anything specific about my portfolio you'd like to know?"
-  ];
-
-  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+// Get ML response from Python
+async function getMLResponse(text) {
+  if (!mlChatReady || !pyodide) {
+    return { response: getFallbackResponse(text), confidence: 0 };
+  }
+  
+  try {
+    const result = await pyodide.runPythonAsync(`
+import json
+result = chatbot.chat("""${text.replace(/"/g, '\\"')}""")
+json.dumps({'response': result[0], 'confidence': float(result[1])})
+`);
+    return JSON.parse(result);
+  } catch (error) {
+    console.error('ML response error:', error);
+    return { response: getFallbackResponse(text), confidence: 0 };
+  }
 }
 
 // Initialize chat UI and history
 let chatHistory = loadChatHistory();
 if (chatHistory.length) {
-  chatHistory.forEach(item => renderMessage(item.role, item.text));
+  chatHistory.forEach(item => renderMessage(item.role, item.text, item.confidence));
 }
 
 function openChat() {
@@ -374,6 +640,11 @@ function openChat() {
   chatInput.focus();
   chatToggle.classList.add('active');
   sessionStorage.setItem('chat-open', '1');
+  
+  // Initialize ML chatbot on first open
+  if (!pyodide && typeof loadPyodide !== 'undefined') {
+    initMLChatbot();
+  }
 }
 
 function closeChat() {
@@ -393,33 +664,104 @@ chatClose.addEventListener('click', closeChat);
 // Restore open state
 if (sessionStorage.getItem('chat-open')) openChat(); else chatWidget.style.display = 'none';
 
-chatForm.addEventListener('submit', (e) => {
+chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = (chatInput.value || '').trim();
   if (!text) { showToast('Type a message'); return; }
 
-  // render user message
+  // Render user message
   renderMessage('user', text);
   chatHistory.push({ role: 'user', text });
   saveChatHistory(chatHistory);
   chatInput.value = '';
 
-  // Use Llama-inspired responses
-  const reply = getLlamaResponse(text);
-  const delay = prefersReducedMotion ? 0 : Math.min(1200, 300 + reply.length * 10);
-  setTimeout(() => {
-    renderMessage('bot', reply);
-    chatHistory.push({ role: 'bot', text: reply });
+  // Show typing indicator
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'chat-message bot';
+  typingDiv.innerHTML = '<div class="bubble">\ud83e\udde0 Thinking...</div>';
+  chatMessages.appendChild(typingDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Get ML response
+  const delay = prefersReducedMotion ? 0 : 300;
+  setTimeout(async () => {
+    const { response, confidence } = await getMLResponse(text);
+    typingDiv.remove();
+    renderMessage('bot', response, confidence);
+    chatHistory.push({ role: 'bot', text: response, confidence });
     saveChatHistory(chatHistory);
   }, delay);
 });
 
-// Simple keyboard: Esc to close chat
+// Simple keyboard: Esc to close chat or modal
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && chatWidget.style.display === 'flex') closeChat();
+  if (e.key === 'Escape') {
+    if (learnModal && learnModal.style.display === 'flex') {
+      closeLearnModal();
+    } else if (chatWidget.style.display === 'flex') {
+      closeChat();
+    }
+  }
 });
 
-// Mark todo items completed
-try { /* update todo statuses */ } catch(e) {}
+// ===========================
+// Learning Modal Functions
+// ===========================
+function openLearnModal() {
+  if (learnModal) {
+    learnModal.style.display = 'flex';
+    if (learnPhrase) learnPhrase.focus();
+  }
+}
 
+function closeLearnModal() {
+  if (learnModal) {
+    learnModal.style.display = 'none';
+    if (learnPhrase) learnPhrase.value = '';
+    if (learnResponse) learnResponse.value = '';
+  }
+}
+
+async function saveLearnedResponse() {
+  const phrase = learnPhrase ? learnPhrase.value.trim() : '';
+  const response = learnResponse ? learnResponse.value.trim() : '';
+  
+  if (!phrase || !response) {
+    showToast('Please fill in both fields!');
+    return;
+  }
+  
+  const success = await teachBot(phrase, response);
+  
+  if (success) {
+    closeLearnModal();
+    renderMessage('bot', `✅ Learned! I'll remember "${phrase.substring(0, 25)}..." now!`, 1.0);
+    showToast('Saved to database!');
+  } else {
+    showToast('Failed to save. Try again!');
+  }
+}
+
+// Event listeners for teach button and modal
+if (chatTeach) {
+  chatTeach.addEventListener('click', openLearnModal);
+}
+
+if (learnCancel) {
+  learnCancel.addEventListener('click', closeLearnModal);
+}
+
+if (learnSave) {
+  learnSave.addEventListener('click', saveLearnedResponse);
+}
+
+// Close modal when clicking outside
+if (learnModal) {
+  learnModal.addEventListener('click', (e) => {
+    if (e.target === learnModal) closeLearnModal();
+  });
+}
+
+// Initialize learned count on page load
+updateLearnedCount();
 

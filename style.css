@@ -214,6 +214,8 @@ html, body {
   color:#fff;
 }
 .chat-widget .chat-header button { background: transparent; color: #fff; border: none; cursor: pointer; font-size: 16px; }
+.chat-teach-btn { background: rgba(255,255,255,0.2) !important; border-radius: 6px !important; padding: 4px 8px !important; transition: all 0.3s ease; }
+.chat-teach-btn:hover { background: rgba(255,255,255,0.4) !important; transform: scale(1.1); }
 
 .chat-messages {
   padding: 12px;
@@ -739,7 +741,7 @@ body.dark-mode .navbar a { color: #e0e0e0; }
 body.dark-mode .navbar a:hover { background: #333; }
 body.dark-mode .navbar .btn { background-color: #4aa3ff; }
 body.dark-mode .navbar .btn:hover { background-color: #1e90ff; box-shadow: 0 0 12px #4aa3ff; }
-
+body.dark-mode .navbar .chat-toggle { background: #4aa3ff; }
 body.dark-mode .hero { background: linear-gradient(to bottom, #1a73e8, #0f2027); }
 body.dark-mode .section h2 { color: #4aa3ff; }
 body.dark-mode .section h2::after { background: #4aa3ff; }
@@ -775,3 +777,10 @@ body.dark-mode .btn { background-color: #4aa3ff; }
 body.dark-mode .btn:hover { background-color: #1e90ff; box-shadow: 0 0 15px rgba(74, 163, 255, 0.7); }
 
 body.dark-mode footer { background: #1e1e1e; }
+blockquote {
+  font-style: italic;
+  color: #555;
+  border-left: 4px solid #007bff;
+  padding-left: 15px;
+  margin: 20px 0;
+}
