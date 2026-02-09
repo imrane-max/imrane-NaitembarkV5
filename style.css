@@ -108,8 +108,26 @@ html, body {
   color: #fff;
   padding: 6px 10px;
   border-radius: 6px;
+  position: relative;
+  transition: all 0.3s ease;
 }
-.nav-links a:hover { transform: scale(1.05); }
+.nav-links a::before {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #00d4ff;
+  transition: width 0.3s ease;
+}
+.nav-links a:hover {
+  transform: scale(1.05);
+  text-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+}
+.nav-links a:hover::before {
+  width: 100%;
+}
 .nav-actions { display: flex; align-items: center; gap: 8px; }
 .theme-label { margin-left: 8px; }
 
@@ -128,6 +146,93 @@ html, body {
 
 /* Screen-reader only helper */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* Chat widget (simple rule-based chatbot) */
+.chat-toggle {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 20px rgba(0,123,255,0.2);
+  cursor: pointer;
+  z-index: 10001;
+  font-size: 24px;
+  transition: all 0.3s ease;
+  animation: chatBounce 2s ease-in-out infinite, chatPulseGlow 2.5s ease-in-out infinite;
+}
+
+.chat-toggle:hover {
+  transform: scale(1.15);
+  box-shadow: 0 12px 35px rgba(0, 123, 255, 0.6);
+  animation: chatBounce 1.5s ease-in-out infinite, chatPulseGlow 1.5s ease-in-out infinite;
+}
+
+.chat-toggle:active {
+  animation: chatRotate 0.5s ease-in-out;
+  transform: scale(0.95);
+}
+
+.chat-toggle.active {
+  background: #0056b3;
+  box-shadow: 0 12px 40px rgba(0, 86, 179, 0.7);
+}
+
+/* Chat settings panel */
+.chat-settings label { display:block; font-size:12px; color:#333; margin-bottom:4px; }
+.chat-settings input { padding:8px; border-radius:6px; border:1px solid #ddd; }
+.chat-settings .btn { padding:6px 10px; font-size:13px; }
+
+.chat-widget {
+  position: fixed;
+  right: 18px;
+  bottom: 86px;
+  width: 320px;
+  max-width: calc(100% - 36px);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 10002;
+  font-size: 14px;
+}
+
+.chat-widget .chat-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 12px;
+  background:#007bff;
+  color:#fff;
+}
+.chat-widget .chat-header button { background: transparent; color: #fff; border: none; cursor: pointer; font-size: 16px; }
+
+.chat-messages {
+  padding: 12px;
+  height: 220px;
+  overflow-y: auto;
+  background: linear-gradient(180deg,#fbfdff,#f4f9ff);
+}
+.chat-message { margin-bottom:10px; display:flex; gap:8px; }
+.chat-message.user .bubble { background:#007bff; color:#fff; margin-left:auto; }
+.chat-message.bot .bubble { background:#efefef; color:#222; margin-right:auto; }
+.bubble { padding:8px 12px; border-radius:12px; max-width:80%; }
+
+.chat-form { display:flex; gap:8px; padding:10px; align-items:center; background:#fff; }
+.chat-input { flex:1; padding:8px 10px; border-radius:8px; border:1px solid #ddd; }
+.chat-send { padding:8px 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-widget, .chat-toggle { transition: none !important; }
+}
 
 .navbar a, .navbar button {
   text-decoration: none;
@@ -148,16 +253,20 @@ html, body {
 }
 
 .navbar .btn {
-  background-color: #007bff;
-  border: none;
-  color: #fff;
-  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
 .navbar .btn:hover {
   transform: scale(1.1);
   box-shadow: 0 0 12px #007bff;
   background-color: #0056b3;
+  animation: buttonPress 0.4s ease;
+}
+
+.navbar .btn:active {
+  animation: buttonPress 0.3s ease;
 }
 
 /* ========================= */
@@ -236,6 +345,103 @@ html, body {
   50% { transform: translateY(-10px); }
 }
 
+/* Navbar item stagger entrance */
+@keyframes navSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Button press/scale animation */
+@keyframes buttonPress {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* Card entrance with pop */
+@keyframes cardPop {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Section header glow entrance */
+@keyframes headerGlowIn {
+  from {
+    opacity: 0;
+    color: #007bff;
+    text-shadow: 0 0 0px rgba(0, 123, 255, 0.5);
+  }
+  to {
+    opacity: 1;
+    color: #007bff;
+    text-shadow: 0 0 15px rgba(0, 123, 255, 0.3);
+  }
+}
+
+/* Underline animation */
+@keyframes underlineExpand {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 100%;
+    opacity: 1;
+  }
+}
+
+/* Button shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Chat button bounce animation */
+@keyframes chatBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.05);
+  }
+}
+
+/* Chat button pulse glow */
+@keyframes chatPulseGlow {
+  0%, 100% {
+    box-shadow: 0 8px 20px rgba(0, 123, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 8px 30px rgba(0, 123, 255, 0.5);
+  }
+}
+
+/* Chat button rotation on open */
+@keyframes chatRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ========================= */
 /* Sections */
 .section {
@@ -251,8 +457,9 @@ html, body {
   margin-bottom: 20px;
   color: #007bff;
   position: relative;
-  transition: color 0.3s ease;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
   text-decoration: none;
+  animation: headerGlowIn 0.7s ease-out;
 }
 
 .section h2::after {
@@ -262,11 +469,17 @@ html, body {
   height: 3px;
   background: #007bff;
   margin: 5px 0 0;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.4);
+}
+
+.section h2:hover {
+  text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
 }
 
 .section h2:hover::after {
   width: 150px;
+  box-shadow: 0 0 15px rgba(0, 123, 255, 0.6);
 }
 
 .gray {
@@ -300,6 +513,8 @@ html, body {
   font-size: 14px;
   min-width: 100px;
   border: 2px solid transparent;
+  animation: cardPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
 }
 
 .skills span:hover {
@@ -330,6 +545,10 @@ html, body {
 
 .card {
   width: 260px;
+  animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
+  transform: perspective(600px);
+  position: relative;
   height: 350px;
   background: #fff;
   border-radius: 15px;
@@ -339,7 +558,7 @@ html, body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  align-items: center;
+  align-items: center;  
   overflow: hidden;
   border: 1px solid rgba(0, 123, 255, 0.1);
 }

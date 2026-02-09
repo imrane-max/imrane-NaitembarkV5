@@ -46,6 +46,33 @@ window.addEventListener('keydown', (e) => {
 });
 
 // ===========================
+// Navbar Item Stagger Animation on Load
+// ===========================
+window.addEventListener('DOMContentLoaded', () => {
+  if (!prefersReducedMotion) {
+    const navBrand = document.querySelector('.nav-brand');
+    const navLinks = document.querySelectorAll('.nav-links a');
+    const navActions = document.querySelector('.nav-actions');
+    
+    // Navbar brand entrance
+    if (navBrand) {
+      navBrand.style.animation = 'slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+    }
+    
+    // Staggered navbar links entrance
+    navLinks.forEach((link, index) => {
+      link.style.animation = `navSlideDown 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`;
+      link.style.animationDelay = `${0.1 + index * 0.1}s`;
+    });
+    
+    // Navbar actions entrance
+    if (navActions) {
+      navActions.style.animation = 'slideInRight 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+    }
+  }
+});
+
+// ===========================
 // Fade-in Animation on Scroll (IntersectionObserver)
 // ===========================
 const fadeElements = document.querySelectorAll('.fade-in');
@@ -132,9 +159,13 @@ cards.forEach((card) => {
   if (!prefersReducedMotion) {
     card.addEventListener('mouseenter', () => {
       card.style.animation = `float 0.6s ease-in-out forwards`;
+      card.style.boxShadow = '0 12px 30px rgba(0, 123, 255, 0.3)';
+      card.style.transform = 'translateY(-8px)';
     });
     card.addEventListener('mouseleave', () => {
       card.style.animation = 'none';
+      card.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+      card.style.transform = 'translateY(0)';
     });
   }
 });
@@ -159,14 +190,20 @@ navLinks.forEach(link => {
 // ===========================
 const skillSpans = document.querySelectorAll('.skills span');
 skillSpans.forEach((skill, index) => {
-  skill.style.animationDelay = `${index * 0.1}s`;
-  skill.classList.add('slide-left');
+  if (!prefersReducedMotion) {
+    skill.style.animationDelay = `${0.3 + index * 0.1}s`;
+  } else {
+    skill.style.opacity = '1';
+  }
 });
 
 const projectCards = document.querySelectorAll('.cards .card');
 projectCards.forEach((card, index) => {
-  card.style.animationDelay = `${index * 0.15}s`;
-  if (index % 2 === 0) card.classList.add('slide-left'); else card.classList.add('slide-right');
+  if (!prefersReducedMotion) {
+    card.style.animationDelay = `${0.4 + index * 0.15}s`;
+  } else {
+    card.style.opacity = '1';
+  }
 });
 
 // ===========================
@@ -180,6 +217,16 @@ buttons.forEach(btn => {
     const y = e.clientY - rect.top;
     btn.style.setProperty('--mouse-x', `${x}px`);
     btn.style.setProperty('--mouse-y', `${y}px`);
+  });
+  
+  // Add click animation
+  btn.addEventListener('click', function() {
+    if (!prefersReducedMotion) {
+      this.style.animation = 'none';
+      // Trigger reflow to restart animation
+      void this.offsetWidth;
+      this.style.animation = 'buttonPress 0.3s ease';
+    }
   });
 });
 
@@ -228,6 +275,149 @@ const headerObserver = new IntersectionObserver(entries => {
   entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('glow-animation'); });
 }, { threshold: 0.5 });
 sectionHeaders.forEach(header => headerObserver.observe(header));
+
+// ===========================
+// Llama LLM-Powered Chatbot (Model-Free Open-Source)
+// ===========================
+const chatToggle = document.getElementById('chat-toggle');
+const chatWidget = document.getElementById('chat-widget');
+const chatClose = document.getElementById('chat-close');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatMessages = document.getElementById('chat-messages');
+
+// Load chat history from sessionStorage
+function loadChatHistory() {
+  try {
+    const raw = sessionStorage.getItem('chat-history');
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) { return []; }
+}
+
+function saveChatHistory(history) {
+  try { sessionStorage.setItem('chat-history', JSON.stringify(history)); } catch (e) {}
+}
+
+function renderMessage(role, text) {
+  const wrapper = document.createElement('div');
+  wrapper.className = `chat-message ${role}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = text;
+  wrapper.appendChild(bubble);
+  chatMessages.appendChild(wrapper);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Local Llama-inspired response generation
+function getLlamaResponse(text) {
+  const lower = text.toLowerCase();
+  
+  // Knowledge responses (Llama-like)
+  const responses = {
+    'project|game|build|code|portfolio': [
+      "I have built 12+ games including Snake, 2048, Rock Paper Scissors AI, Memory Match, Reaction Time, Tic Tac Toe, and ML-powered games!",
+      "Check the Games section to play React projects, Canvas games with Godot, and Python AI games!"
+    ],
+    'skill|tech|technology|language|javascript|python': [
+      "I'm skilled in JavaScript, Python, HTML, CSS, Canvas API, Godot GDScript, and Machine Learning!",
+      "My tech stack: Vanilla JS, Python (ML/Data), Godot Engine, WebAssembly, Neural Networks, TensorFlow concepts"
+    ],
+    'ai|machine learning|ml|neural|llama': [
+      "AI/ML is my passion! I built neural networks, digit classifiers, and learning algorithms!",
+      "I use Llama (open-source LLM) for this chat, plus TF-IDF, cosine similarity, and pattern recognition!"
+    ],
+    'contact|email|reach|message': [
+      "Contact me at: imrane2015su@gmail.com for collaborations and opportunities!",
+      "Email: imrane2015su@gmail.com - I'm always happy to discuss projects!"
+    ],
+    'hello|hi|hey|greetings': [
+      "Hello! I'm a Llama-powered AI assistant. What would you like to know about my portfolio?",
+      "Hi there! Welcome! Ask me about my games, skills, or AI/ML work!"
+    ],
+    'time|duration|how long': [
+      "Most projects take 2-3 weeks. Games typically take 1-2 weeks, larger projects take 3-4 weeks.",
+      "Project timelines vary: simple games are 1 week, complex projects are 3-4 weeks."
+    ]
+  };
+
+  // Find matching response
+  for (const [keywords, replies] of Object.entries(responses)) {
+    for (const keyword of keywords.split('|')) {
+      if (lower.includes(keyword)) {
+        return replies[Math.floor(Math.random() * replies.length)];
+      }
+    }
+  }
+
+  // Fallback responses
+  const fallbacks = [
+    "That's interesting! Tell me more about what interests you!",
+    "I see! You can also check the Games or Code Examples sections!",
+    "Great question! Feel free to ask about my projects, skills, or experience!",
+    "I appreciate that! Is there anything specific about my portfolio you'd like to know?"
+  ];
+
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+}
+
+// Initialize chat UI and history
+let chatHistory = loadChatHistory();
+if (chatHistory.length) {
+  chatHistory.forEach(item => renderMessage(item.role, item.text));
+}
+
+function openChat() {
+  chatWidget.setAttribute('aria-hidden', 'false');
+  chatWidget.style.display = 'flex';
+  chatInput.focus();
+  chatToggle.classList.add('active');
+  sessionStorage.setItem('chat-open', '1');
+}
+
+function closeChat() {
+  chatWidget.setAttribute('aria-hidden', 'true');
+  chatWidget.style.display = 'none';
+  chatToggle.focus();
+  chatToggle.classList.remove('active');
+  sessionStorage.removeItem('chat-open');
+}
+
+chatToggle.addEventListener('click', () => {
+  if (chatWidget.style.display === 'flex') closeChat(); else openChat();
+});
+
+chatClose.addEventListener('click', closeChat);
+
+// Restore open state
+if (sessionStorage.getItem('chat-open')) openChat(); else chatWidget.style.display = 'none';
+
+chatForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = (chatInput.value || '').trim();
+  if (!text) { showToast('Type a message'); return; }
+
+  // render user message
+  renderMessage('user', text);
+  chatHistory.push({ role: 'user', text });
+  saveChatHistory(chatHistory);
+  chatInput.value = '';
+
+  // Use Llama-inspired responses
+  const reply = getLlamaResponse(text);
+  const delay = prefersReducedMotion ? 0 : Math.min(1200, 300 + reply.length * 10);
+  setTimeout(() => {
+    renderMessage('bot', reply);
+    chatHistory.push({ role: 'bot', text: reply });
+    saveChatHistory(chatHistory);
+  }, delay);
+});
+
+// Simple keyboard: Esc to close chat
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && chatWidget.style.display === 'flex') closeChat();
+});
 
 // Mark todo items completed
 try { /* update todo statuses */ } catch(e) {}

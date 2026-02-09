@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML-Powered Chat Assistant</title>
+    <script async src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 5px;
+            color: #333;
+            animation: fadeIn 0.8s;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.8s 0.2s both;
+        }
+
+        .info-banner {
+            background: #e3f2fd;
+            border-left: 4px solid #667eea;
+            padding: 12px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #1976d2;
+            margin-bottom: 20px;
+            animation: slideInUp 0.5s;
+        }
+
+        .chat-box {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            animation: scaleIn 0.5s 0.3s both;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: slideInUp 0.3s ease;
+        }
+
+        .user-msg {
+            text-align: right;
+        }
+
+        .user-msg .text {
+            background: #667eea;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 18px 18px 5px 18px;
+            display: inline-block;
+            max-width: 80%;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+
+        .ai-msg .text {
+            background: #e9ecef;
+            color: #333;
+            padding: 12px 16px;
+            border-radius: 18px 18px 18px 5px;
+            display: inline-block;
+            max-width: 80%;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+
+        .ai-msg {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .ai-avatar {
+            font-size: 18px;
+        }
+
+        .confidence {
+            font-size: 11px;
+            color: #999;
+            margin-top: 5px;
+            text-align: left;
+        }
+
+        .input-section {
+            display: flex;
+            gap: 10px;
+            animation: fadeIn 0.6s 0.4s both;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .send-btn {
+            padding: 12px 25px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            animation: scaleIn 0.5s 0.4s both;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            background: #f5f7fa;
+            padding: 15px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+            animation: fadeIn 0.6s 0.5s both;
+            font-size: 13px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        .loading.dot2 {
+            animation-delay: 0.2s;
+        }
+
+        .loading.dot3 {
+            animation-delay: 0.4s;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: white;
+            transform: translateX(-5px);
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    
+    <div class="container">
+        <h1>🤖 ML Chat Assistant</h1>
+        <p class="subtitle">Machine Learning powered conversation</p>
+
+        <div class="info-banner">
+            🧠 This AI uses TF-IDF + Cosine Similarity machine learning to understand your questions and learn from conversations!
+        </div>
+
+        <div class="chat-box" id="chatBox"></div>
+
+        <div class="input-section">
+            <input 
+                type="text" 
+                id="userInput" 
+                placeholder="Ask me about projects, skills, AI..." 
+                onkeypress="handleKeyPress(event)"
+            >
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Messages</div>
+                <div class="stat-value" id="msgCount">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Avg Confidence</div>
+                <div class="stat-value" id="confidence">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pyodide;
+        let chatReady = false;
+        let messageCount = 0;
+        let confidenceSum = 0;
+
+        async function initPyodide() {
+            pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/",
+            });
+
+            const pythonCode = `
+import re
+import math
+from collections import Counter
+
+class TFIDFChatbot:
+    def __init__(self):
+        # Knowledge base: question -> response
+        self.knowledge_base = {
+            "projects games builds portfolio": [
+                "I have built 12+ games including vanilla JS games, Godot games, and ML-powered games!",
+                "My portfolio includes React apps, Canvas games, Godot projects, and Python AI!",
+                "Check my Games section - features Snake, 2048, RPS AI, Memory, Reaction Time, Tic Tac Toe, and ML games!"
+            ],
+            "skills technologies tech stack languages": [
+                "I'm skilled in JavaScript, Python, HTML, CSS, Canvas API, Godot Engine, Machine Learning, and Web APIs!",
+                "My tech: Vanilla JS, Python (ML/Data), Godot GDScript, WebAssembly, Neural Networks!",
+                "I work with JavaScript, Python, Godot, TensorFlow concepts, and modern web technologies!"
+            ],
+            "ai artificial intelligence machine learning ml neural": [
+                "AI/ML is my passion! I built ML games, neural network trainers, digit classifiers, and learning algorithms!",
+                "I implement: TF-IDF, cosine similarity, neural networks, pattern recognition, and NLP!",
+                "This chatbot itself uses TF-IDF + Machine Learning! Check my ML games section!"
+            ],
+            "contact email reach connect communicate": [
+                "Contact me at: imrane2015su@gmail.com for collaborations or questions!",
+                "Email: imrane2015su@gmail.com - I'd love to discuss projects!",
+                "Reach out: imrane2015su@gmail.com - Always happy to connect!"
+            ],
+            "hello hi hey greetings welcome": [
+                "Hello! I'm an ML-powered chatbot. Ask me about my projects, skills, or anything else!",
+                "Hi there! What would you like to know about my portfolio?",
+                "Hey! Welcome! I'm here to help answer questions about my work and skills!"
+            ],
+            "python pyodide webassembly browser": [
+                "Python is awesome! This chatbot runs Python via Pyodide in your browser!",
+                "Yes! I'm running Python code right now using WebAssembly - no server needed!",
+                "Pyodide is incredible - it lets Python run in browsers. I love it!"
+            ]
+        }
+        self.conversation_history = []
+
+    def tokenize(self, text):
+        text = text.lower()
+        text = re.sub(r'[^a-z0-9\\s]', '', text)
+        return text.split()
+
+    def calculate_tf(self, tokens):
+        tf = Counter(tokens)
+        total = len(tokens)
+        return {word: count/total for word, count in tf.items()}
+
+    def calculate_idf(self, all_documents):
+        total_docs = len(all_documents)
+        idf = {}
+        all_words = set()
+        
+        for doc in all_documents:
+            for word in set(doc):
+                all_words.add(word)
+        
+        for word in all_words:
+            docs_with_word = sum(1 for doc in all_documents if word in doc)
+            idf[word] = math.log(total_docs / (1 + docs_with_word))
+        
+        return idf
+
+    def tfidf_vector(self, tokens, idf):
+        tf = self.calculate_tf(tokens)
+        tfidf = {word: tf[word] * idf.get(word, 0) for word in tokens}
+        return tfidf
+
+    def cosine_similarity(self, vec1, vec2):
+        all_words = set(vec1.keys()) | set(vec2.keys())
+        
+        if not all_words:
+            return 0.0
+        
+        dot_product = sum(vec1.get(w, 0) * vec2.get(w, 0) for w in all_words)
+        norm1 = math.sqrt(sum(v**2 for v in vec1.values())) if vec1 else 1
+        norm2 = math.sqrt(sum(v**2 for v in vec2.values())) if vec2 else 1
+        
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        
+        return dot_product / (norm1 * norm2)
+
+    def find_best_response(self, user_input):
+        user_tokens = self.tokenize(user_input)
+        
+        # Create documents for IDF calculation
+        all_documents = [self.tokenize(keys) for keys in self.knowledge_base.keys()]
+        all_documents.append(user_tokens)
+        
+        # Calculate IDF
+        idf = self.calculate_idf(all_documents)
+        
+        # Convert user input to TF-IDF vector
+        user_tfidf = self.tfidf_vector(user_tokens, idf)
+        
+        # Find best matching knowledge base entry
+        best_similarity = 0
+        best_response = "That's interesting! Tell me more about it!"
+        
+        for kb_key, responses in self.knowledge_base.items():
+            kb_tokens = self.tokenize(kb_key)
+            kb_tfidf = self.tfidf_vector(kb_tokens, idf)
+            
+            similarity = self.cosine_similarity(user_tfidf, kb_tfidf)
+            
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_response = responses[len(self.conversation_history) % len(responses)]
+        
+        # Store in conversation history
+        self.conversation_history.append({
+            'user': user_input,
+            'response': best_response,
+            'confidence': best_similarity
+        })
+        
+        return best_response, best_similarity
+
+# Initialize the chatbot
+chatbot = TFIDFChatbot()
+`;
+
+            await pyodide.runPythonAsync(pythonCode);
+            chatReady = true;
+            addMessage('AI', '🤖 Hello! I\\'m an ML-powered chatbot using TF-IDF + Cosine Similarity. Ask me about my projects, skills, or AI/ML!');
+        }
+
+        function addMessage(sender, text, confidence = null) {
+            const chatBox = document.getElementById('chatBox');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message ' + (sender === 'User' ? 'user-msg' : 'ai-msg');
+
+            if (sender === 'User') {
+                msgDiv.innerHTML = `<div class="text">${escapeHtml(text)}</div>`;
+            } else {
+                let html = `<span class="ai-avatar">🤖</span><div><div class="text">${text}</div>`;
+                if (confidence !== null) {
+                    html += `<div class="confidence">Confidence: ${(confidence * 100).toFixed(1)}%</div>`;
+                }
+                html += `</div>`;
+                msgDiv.innerHTML = html;
+            }
+
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            addMessage('User', text);
+            input.value = '';
+            sendBtn.disabled = true;
+            messageCount++;
+
+            // Show loading
+            const chatBox = document.getElementById('chatBox');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message ai-msg';
+            loadingDiv.innerHTML = `
+                <span class="ai-avatar">🤖</span>
+                <div class="text">
+                    <span class="loading"></span>
+                    <span class="loading dot2"></span>
+                    <span class="loading dot3"></span>
+                </div>
+            `;
+            chatBox.appendChild(loadingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            setTimeout(async () => {
+                try {
+                    const response = await pyodide.runPythonAsync(\`
+result = chatbot.find_best_response("\${text}")
+import json
+json.dumps({
+    'response': result[0],
+    'confidence': float(result[1])
+})
+\`);
+                    const data = JSON.parse(response);
+                    loadingDiv.remove();
+                    addMessage('AI', data.response, data.confidence);
+                    
+                    // Update stats
+                    confidenceSum += data.confidence;
+                    document.getElementById('msgCount').textContent = messageCount;
+                    const avgConfidence = (confidenceSum / messageCount * 100).toFixed(1);
+                    document.getElementById('confidence').textContent = avgConfidence + '%';
+                } catch (error) {
+                    loadingDiv.remove();
+                    addMessage('AI', 'Error processing response. Please try again!');
+                }
+                sendBtn.disabled = false;
+                input.focus();
+            }, 500);
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                sendMessage();
+            }
+        }
+
+        window.addEventListener('load', initPyodide);
+    </script>
+</body>
+</html>
