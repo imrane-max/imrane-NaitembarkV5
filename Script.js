@@ -38,6 +38,155 @@ function toggleTheme(save = true) {
 
 themeBtn.addEventListener('click', () => toggleTheme(true));
 
+// ===========================
+// Sign In (DevAccount - edit credentials here)
+// ===========================
+const DevAccount = {
+  username: 'dev',
+  password: '78945612'
+};
+
+const SIGN_IN_SESSION_KEY = 'signin-signed-in';
+
+const signInBtn = document.getElementById('signInBtn');
+const signInLabel = document.getElementById('signInLabel');
+const signInModal = document.getElementById('signIn-modal');
+const signInDevBtn = document.getElementById('signIn-dev-btn');
+const signInDevForm = document.getElementById('signIn-dev-form');
+const signInUsername = document.getElementById('signIn-username');
+const signInPassword = document.getElementById('signIn-password');
+const signInError = document.getElementById('signIn-error');
+const signInCancel = document.getElementById('signIn-cancel');
+const signInSubmit = document.getElementById('signIn-submit');
+
+function isSignedIn() {
+  return sessionStorage.getItem(SIGN_IN_SESSION_KEY) === '1';
+}
+
+function updateSignInUI() {
+  if (signInBtn && signInLabel) {
+    const icon = signInBtn.querySelector('i');
+    if (isSignedIn()) {
+      signInLabel.textContent = 'Sign Out';
+      if (icon) { icon.classList.remove('fa-right-to-bracket'); icon.classList.add('fa-right-from-bracket'); }
+      signInBtn.title = 'Sign out';
+    } else {
+      signInLabel.textContent = 'Sign In';
+      if (icon) { icon.classList.remove('fa-right-from-bracket'); icon.classList.add('fa-right-to-bracket'); }
+      signInBtn.title = 'Sign in';
+    }
+  }
+}
+
+function openSignInModal() {
+  if (signInModal) {
+    signInModal.style.display = 'flex';
+    if (signInDevForm) signInDevForm.style.display = 'none';
+    if (signInUsername) signInUsername.value = '';
+    if (signInPassword) signInPassword.value = '';
+    if (signInError) { signInError.style.display = 'none'; signInError.textContent = ''; }
+  }
+}
+
+function toggleDevForm() {
+  if (signInDevForm) {
+    const isHidden = signInDevForm.style.display === 'none' || !signInDevForm.style.display;
+    signInDevForm.style.display = isHidden ? 'block' : 'none';
+    if (isHidden && signInUsername) signInUsername.focus();
+  }
+}
+
+function closeSignInModal() {
+  if (signInModal) signInModal.style.display = 'none';
+}
+
+function handleSignInSubmit() {
+  const user = (signInUsername?.value || '').trim();
+  const pass = signInPassword?.value || '';
+  if (user === DevAccount.username && pass === DevAccount.password) {
+    sessionStorage.setItem(SIGN_IN_SESSION_KEY, '1');
+    closeSignInModal();
+    updateSignInUI();
+    updateDevToolsVisibility();
+    showToast(`Welcome, ${DevAccount.username}!`);
+  } else {
+    if (signInError) {
+      signInError.textContent = 'Invalid username or password';
+      signInError.style.display = 'block';
+    }
+  }
+}
+
+function handleSignInClick() {
+  if (isSignedIn()) {
+    sessionStorage.removeItem(SIGN_IN_SESSION_KEY);
+    updateSignInUI();
+    updateDevToolsVisibility();
+    showToast('Signed out');
+  } else {
+    openSignInModal();
+  }
+}
+
+if (signInBtn) signInBtn.addEventListener('click', handleSignInClick);
+
+// ===========================
+// Dev: Section reordering + Commit to GitHub
+// ===========================
+const SECTION_ORDER_KEY = 'dev-section-order';
+let sortableInstance = null;
+
+function updateDevToolsVisibility() {
+  if (isSignedIn()) initSortable(); else destroySortable();
+}
+
+function saveSectionOrder() {
+  const main = document.getElementById('main-sortable');
+  if (!main) return;
+  const ids = [...main.children].map(el => el.dataset.sectionId).filter(Boolean);
+  localStorage.setItem(SECTION_ORDER_KEY, JSON.stringify(ids));
+}
+
+function restoreSectionOrder() {
+  const main = document.getElementById('main-sortable');
+  const saved = localStorage.getItem(SECTION_ORDER_KEY);
+  if (!main || !saved) return;
+  try {
+    const order = JSON.parse(saved);
+    const sections = [...main.children];
+    const byId = {};
+    sections.forEach(el => { const id = el.dataset?.sectionId; if (id) byId[id] = el; });
+    order.forEach(id => { if (byId[id]) main.appendChild(byId[id]); });
+  } catch (e) {}
+}
+
+function initSortable() {
+  const main = document.getElementById('main-sortable');
+  if (!main || sortableInstance || typeof Sortable === 'undefined') return;
+  sortableInstance = Sortable.create(main, {
+    animation: 200,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    onEnd: () => saveSectionOrder()
+  });
+}
+
+function destroySortable() {
+  if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null; }
+}
+
+// Restore order on load, then update dev tools after sign-in UI
+restoreSectionOrder();
+if (signInDevBtn) signInDevBtn.addEventListener('click', toggleDevForm);
+if (signInCancel) signInCancel.addEventListener('click', closeSignInModal);
+if (signInSubmit) signInSubmit.addEventListener('click', handleSignInSubmit);
+if (signInModal) signInModal.addEventListener('click', (e) => { if (e.target === signInModal) closeSignInModal(); });
+if (signInPassword) signInPassword.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSignInSubmit(); });
+if (signInUsername) signInUsername.addEventListener('keypress', (e) => { if (e.key === 'Enter') signInPassword?.focus(); });
+
+updateSignInUI();
+updateDevToolsVisibility();
+
 // Keyboard shortcut: 'D' toggles theme
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'd' && !e.metaKey && !e.ctrlKey && !e.altKey) {
@@ -319,7 +468,7 @@ function updateLearnedCount() {
   if (learnedCountEl) learnedCountEl.textContent = count;
 }
 
-// Update ML status display
+// Update ML status display (Llama AI connection or ML fallback)
 function updateMLStatus(status) {
   if (mlStatusEl) mlStatusEl.textContent = status;
 }
@@ -523,7 +672,7 @@ chatbot.load_learned(learned_data)
     }
     
     mlChatReady = true;
-    updateMLStatus('Ready \u2713');
+    if (!checkLlamaConnection()) updateMLStatus('ML Ready ✓');
     updateLearnedCount();
     console.log('\ud83e\udde0 ML Chatbot loaded successfully!');
   } catch (error) {
@@ -609,6 +758,38 @@ function getFallbackResponse(text) {
   return "\u2728 Ask about my projects, skills, or games!";
 }
 
+// Free AI Agent - Puter.js (Llama 3.3 70B) - No API key required
+const FREE_AI_SYSTEM_PROMPT = `You are a friendly AI assistant for Imrane Naitembark's portfolio. You know about: his 12+ games (Snake, 2048, Memory Match, Fragime, Hamood, ML Digit Classifier, etc.), skills (JavaScript, Python, Godot, AI/ML, TF-IDF), and contact: imrane2015su@gmail.com. Keep replies concise (under 100 words), helpful, and use emojis occasionally. Focus on portfolio topics.`;
+
+const LLAMA_MODEL = 'meta-llama/llama-3.3-70b-instruct';
+
+function isPuterReady() {
+  return typeof puter !== 'undefined' && puter?.ai?.chat;
+}
+
+async function getFreeAIResponse(text) {
+  if (!isPuterReady()) return null;
+  try {
+    const response = await puter.ai.chat(text, {
+      model: LLAMA_MODEL,
+      systemPrompt: FREE_AI_SYSTEM_PROMPT
+    });
+    const content = response?.message?.content || response?.content || (typeof response === 'string' ? response : null);
+    return content ? { response: content.trim(), confidence: 1, freeAI: true } : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Check Puter/Llama connection and update status
+function checkLlamaConnection() {
+  if (isPuterReady()) {
+    updateMLStatus('Llama Ready ✓');
+    return true;
+  }
+  return false;
+}
+
 // Get ML response from Python
 async function getMLResponse(text) {
   if (!mlChatReady || !pyodide) {
@@ -641,10 +822,15 @@ function openChat() {
   chatToggle.classList.add('active');
   sessionStorage.setItem('chat-open', '1');
   
-  // Initialize ML chatbot on first open
+  // Initialize ML chatbot on first open (fallback)
   if (!pyodide && typeof loadPyodide !== 'undefined') {
     initMLChatbot();
   }
+  // Check Puter/Llama connection - retry every 500ms for 5s
+  let attempts = 0;
+  const checkInterval = setInterval(() => {
+    if (checkLlamaConnection() || ++attempts >= 10) clearInterval(checkInterval);
+  }, 500);
 }
 
 function closeChat() {
@@ -682,12 +868,23 @@ chatForm.addEventListener('submit', async (e) => {
   chatMessages.appendChild(typingDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
-  // Get ML response
+  // Get response: try Free AI (Puter/Llama) first, fallback to ML
   const delay = prefersReducedMotion ? 0 : 300;
   setTimeout(async () => {
-    const { response, confidence } = await getMLResponse(text);
+    let result = await getFreeAIResponse(text);
+    if (!result) result = await getMLResponse(text);
+    const { response, confidence } = result;
     typingDiv.remove();
     renderMessage('bot', response, confidence);
+    if (result.freeAI) {
+      const lastBubble = chatMessages.lastElementChild?.querySelector('.bubble');
+      if (lastBubble) {
+        const badge = document.createElement('div');
+        badge.style.cssText = 'font-size:9px;color:#4ade80;margin-top:2px;';
+        badge.textContent = '🦙 Free AI (Llama)';
+        lastBubble.appendChild(badge);
+      }
+    }
     chatHistory.push({ role: 'bot', text: response, confidence });
     saveChatHistory(chatHistory);
   }, delay);
@@ -764,4 +961,16 @@ if (learnModal) {
 
 // Initialize learned count on page load
 updateLearnedCount();
+
+// ===========================
+// Plugins: AOS (Animate On Scroll) + GLightbox (Image Lightbox)
+// ===========================
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof AOS !== 'undefined' && !prefersReducedMotion) {
+    AOS.init({ duration: 600, offset: 80, once: true });
+  }
+  if (typeof GLightbox !== 'undefined') {
+    GLightbox({ selector: '.glightbox', touchNavigation: true });
+  }
+});
 

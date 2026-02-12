@@ -1,25 +1,57 @@
 #!/usr/bin/env python3
 """
-Portfolio AI Chatbot with Machine Learning
-An NLP-based chatbot using TF-IDF and Cosine Similarity for intelligent responses
-Features: TF-IDF vectorization, cosine similarity matching, learning from conversations
+Portfolio AI Chatbot with Real AI & Machine Learning
+- Real AI: Ollama (free local LLM) or OpenAI API for generative responses
+- ML Fallback: TF-IDF + N-grams + BM25 + Cosine Similarity (pure Python, no deps)
+Features: LLM, TF-IDF, N-grams, BM25 ranking, ensemble matching, online learning
 """
 
+import argparse
+import os
 import random
 import re
 import math
+import sys
 from datetime import datetime
 from collections import defaultdict, Counter
 
+# Optional: Real AI backends
+OLLAMA_AVAILABLE = False
+OPENAI_AVAILABLE = False
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    pass
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    pass
+
+
+# System prompt for Real AI - gives context about the portfolio
+PORTFOLIO_SYSTEM_PROMPT = """You are the AI assistant for Imrane Naitembark's portfolio. You help visitors learn about his work.
+
+ABOUT IMRANE:
+- Web developer, game developer, AI/ML enthusiast
+- Skills: HTML, CSS, JavaScript, Python, Godot GDScript, Neural Networks, TF-IDF, Canvas API
+- Projects: 12+ games (Snake, 2048, Memory Match, Reaction Time, Tic Tac Toe, ML Digit Classifier, ML RPS Learner, Godot games Fragime & Hamood)
+- Contact: imrane2015su@gmail.com, github.com/imrane-max
+
+Keep responses concise, helpful, and friendly. Use emojis occasionally. Answer questions about his portfolio, skills, projects, games, and contact info."""
+
 
 class TFIDF:
-    """TF-IDF Vectorizer for text similarity"""
+    """TF-IDF Vectorizer with N-grams for text similarity (Machine Learning)"""
     
-    def __init__(self):
+    def __init__(self, use_ngrams=True, ngram_range=(1, 2)):
         self.documents = []
         self.vocabulary = set()
         self.idf = {}
         self.doc_vectors = []
+        self.use_ngrams = use_ngrams
+        self.ngram_range = ngram_range
     
     def tokenize(self, text):
         """Simple tokenization - lowercase and split on non-alphanumeric"""
@@ -42,19 +74,31 @@ class TFIDF:
                      'his', 'she', 'her', 'hers', 'they', 'them', 'their',
                      'what', 'which', 'who', 'whom'}
         return [t for t in tokens if t not in stopwords and len(t) > 1]
+
+    def _get_ngrams(self, tokens):
+        """Generate n-grams (unigrams + bigrams) for richer ML features"""
+        ngrams = list(tokens)
+        if self.use_ngrams and self.ngram_range[1] >= 2:
+            for i in range(len(tokens) - 1):
+                bigram = f"{tokens[i]}_{tokens[i+1]}"
+                ngrams.append(bigram)
+        return ngrams
     
     def fit(self, documents):
         """Build vocabulary and compute IDF values"""
         self.documents = documents
         doc_count = len(documents)
         term_doc_freq = defaultdict(int)
+        self.doc_term_freqs = []  # Raw term freqs per doc for BM25
         
-        # Build vocabulary and document frequency
+        # Build vocabulary and document frequency (with n-grams)
         for doc in documents:
-            tokens = set(self.tokenize(doc))
-            self.vocabulary.update(tokens)
-            for token in tokens:
-                term_doc_freq[token] += 1
+            tokens = self.tokenize(doc)
+            ngrams = self._get_ngrams(tokens)
+            self.vocabulary.update(ngrams)
+            self.doc_term_freqs.append(Counter(ngrams))
+            for term in set(ngrams):
+                term_doc_freq[term] += 1
         
         # Compute IDF: log(N / df) + 1 (smoothed)
         for term in self.vocabulary:
@@ -64,13 +108,14 @@ class TFIDF:
         self.doc_vectors = [self._compute_tfidf(doc) for doc in documents]
     
     def _compute_tfidf(self, text):
-        """Compute TF-IDF vector for a text"""
+        """Compute TF-IDF vector for a text (with n-grams)"""
         tokens = self.tokenize(text)
         if not tokens:
             return {}
         
-        # Term frequency (normalized)
-        tf = Counter(tokens)
+        # N-gram features for richer ML representation
+        ngrams = self._get_ngrams(tokens)
+        tf = Counter(ngrams)
         max_tf = max(tf.values()) if tf else 1
         
         # TF-IDF vector
@@ -102,29 +147,118 @@ class TFIDF:
         
         return dot_product / (mag1 * mag2)
     
+    def bm25_score(self, query, doc_idx, k1=1.5, b=0.75):
+        """BM25 ranking function - ML algorithm used by search engines"""
+        query_tokens = self._get_ngrams(self.tokenize(query))
+        if not query_tokens:
+            return 0.0
+
+        doc_tf = self.doc_term_freqs[doc_idx]
+        n_docs = len(self.documents)
+        doc_lengths = [sum(dtf.values()) for dtf in self.doc_term_freqs]
+        avg_dl = sum(doc_lengths) / max(n_docs, 1)
+        doc_len = doc_lengths[doc_idx] or 1
+
+        score = 0.0
+        for term in set(query_tokens):
+            if term not in doc_tf or term not in self.idf:
+                continue
+            tf = doc_tf[term]
+            df = sum(1 for dtf in self.doc_term_freqs if term in dtf)
+            idf = math.log((n_docs - df + 0.5) / (df + 0.5) + 1)
+            score += idf * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * doc_len / avg_dl))
+
+        return max(0.0, min(1.0, score / 15))  # Normalize to 0-1 range
+
     def find_most_similar(self, query, threshold=0.1):
-        """Find the most similar document to the query"""
+        """Find most similar document: ensemble of Cosine Similarity + BM25 (ML)"""
         query_vector = self._compute_tfidf(query)
-        
+
         best_idx = -1
         best_score = threshold
-        
+
         for idx, doc_vector in enumerate(self.doc_vectors):
-            score = self.cosine_similarity(query_vector, doc_vector)
+            cos_sim = self.cosine_similarity(query_vector, doc_vector)
+            bm25 = self.bm25_score(query, idx)
+            # Ensemble: combine cosine + BM25 for better ML matching
+            score = 0.7 * cos_sim + 0.3 * min(1.0, bm25)
             if score > best_score:
                 best_score = score
                 best_idx = idx
-        
+
         return best_idx, best_score
 
 
+class RealAI:
+    """Real AI backend: Ollama (free local) or OpenAI API"""
+
+    def __init__(self, backend="ollama", model=None):
+        self.backend = backend.lower()
+        self.model = model or ("llama3.2" if self.backend == "ollama" else "gpt-4o-mini")
+        self.client = None
+        self.messages = [{"role": "system", "content": PORTFOLIO_SYSTEM_PROMPT}]
+        self.available = False
+
+        if self.backend == "ollama" and OLLAMA_AVAILABLE:
+            try:
+                ollama.list()  # Test connection
+                self.available = True
+                self.model = model or self._get_available_model()
+            except Exception:
+                pass
+        elif self.backend == "openai" and OPENAI_AVAILABLE:
+            api_key = os.environ.get("OPENAI_API_KEY")
+            if api_key:
+                self.client = OpenAI(api_key=api_key)
+                self.available = True
+                self.model = model or "gpt-4o-mini"
+
+    def _get_available_model(self):
+        """Get first available Ollama model or default"""
+        try:
+            models = ollama.list()
+            if models.get("models"):
+                return models["models"][0]["name"].split(":")[0]
+        except Exception:
+            pass
+        return "llama3.2"
+
+    def chat(self, user_input):
+        """Get response from Real AI. Returns (response, confidence) or (None, 0) on failure."""
+        if not self.available:
+            return None, 0.0
+
+        self.messages.append({"role": "user", "content": user_input})
+
+        try:
+            if self.backend == "ollama":
+                response = ollama.chat(model=self.model, messages=self.messages)
+                content = response["message"]["content"]
+            else:  # openai
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=self.messages
+                )
+                content = response.choices[0].message.content
+
+            self.messages.append({"role": "assistant", "content": content})
+            return content.strip(), 1.0  # Real AI = high confidence
+
+        except Exception as e:
+            # Remove failed user message so we can retry
+            self.messages.pop()
+            return None, 0.0
+
+
 class PortfolioChatbot:
-    def __init__(self):
-        self.name = "Portfolio ML AI"
-        self.version = "2.0"
+    def __init__(self, use_real_ai=False, real_ai_backend="ollama", real_ai_model=None):
+        self.name = "Portfolio Real AI" if use_real_ai else "Portfolio ML AI"
+        self.version = "3.0"
         self.conversation_history = []
         self.response_count = 0
         self.learned_responses = {}  # For learning from conversations
+        self.use_real_ai = use_real_ai
+        self.real_ai = RealAI(backend=real_ai_backend, model=real_ai_model) if use_real_ai else None
         
         # ML-based knowledge base: training phrases -> responses
         self.ml_knowledge = [
@@ -235,7 +369,7 @@ class PortfolioChatbot:
         return user_input
     
     def find_response(self, user_input):
-        """Find best matching response using TF-IDF ML matching"""
+        """Find best matching response using ML: TF-IDF + N-grams + BM25 ensemble"""
         processed_input = self.preprocess_input(user_input)
         
         # Use TF-IDF to find most similar training phrase
@@ -261,25 +395,40 @@ class PortfolioChatbot:
             '🤔 Interesting question! Try asking about my projects, skills, or games.',
             '💭 I\'m not sure about that. Ask me about AI/ML, games, or contact info!',
             '✨ My ML model couldn\'t find a good match. Try rephrasing or ask about my portfolio!',
-            '🎯 I use TF-IDF matching - try keywords like "skills", "games", "AI", or "contact"!'
+            '🎯 I use TF-IDF + BM25 - try keywords like "skills", "games", "AI", or "contact"!'
         ]
         
         return random.choice(fallback_responses), 0.0, False
     
     def chat(self, user_input):
-        """Main chat method with ML matching"""
-        response, confidence, matched = self.find_response(user_input)
-        
+        """Main chat method: Real AI first (if enabled), else TF-IDF ML"""
+        response = None
+        confidence = 0.0
+        matched = False
+        used_real_ai = False
+
+        # Try Real AI first when enabled and available
+        if self.use_real_ai and self.real_ai and self.real_ai.available:
+            response, confidence = self.real_ai.chat(user_input)
+            if response:
+                matched = True
+                used_real_ai = True
+
+        # Fallback to TF-IDF ML
+        if response is None:
+            response, confidence, matched = self.find_response(user_input)
+
         # Store in history with confidence score
         self.conversation_history.append({
             'user': user_input,
             'bot': response,
             'timestamp': datetime.now().isoformat(),
             'matched': matched,
-            'confidence': confidence
+            'confidence': confidence,
+            'real_ai': used_real_ai
         })
         self.response_count += 1
-        
+
         return response, confidence
     
     def get_stats(self):
@@ -326,9 +475,10 @@ TOPICS YOU CAN ASK ABOUT:
   ✓ How this chatbot works
 
 ML FEATURES:
-  🧠 TF-IDF Vectorization
-  📊 Cosine Similarity Matching
-  🎓 Learning from conversations
+  🧠 TF-IDF Vectorization + N-grams (bigrams)
+  📊 BM25 Ranking (search engine algorithm)
+  📐 Cosine Similarity + Ensemble matching
+  🎓 Online learning from conversations
   📈 Confidence scoring
 
 Just type naturally - I use ML to understand! 😊
@@ -360,9 +510,11 @@ Just type naturally - I use ML to understand! 😊
 
 A Machine Learning powered chatbot for portfolio inquiries.
 
-ML ALGORITHM:
+ML ALGORITHMS:
   🧠 TF-IDF (Term Frequency-Inverse Document Frequency)
-  📊 Cosine Similarity for semantic matching
+  📝 N-grams (unigrams + bigrams) for richer features
+  📊 BM25 ranking (used by search engines)
+  📐 Cosine Similarity + Ensemble matching
   🎓 Online learning from conversations
   🔤 Stopword removal and tokenization
 
@@ -387,21 +539,41 @@ Type /help for commands
 
 
 def main():
-    """Main conversation loop with ML chatbot"""
-    chatbot = PortfolioChatbot()
-    
-    print("""
+    """Main conversation loop - Llama (Ollama) or ML"""
+    parser = argparse.ArgumentParser(description='Portfolio AI Chatbot')
+    parser.add_argument('--ollama', action='store_true', help='Use free Llama model via Ollama (requires: pip install ollama, ollama pull llama3.2)')
+    parser.add_argument('--model', default='llama3.2', help='Ollama model name (default: llama3.2)')
+    args = parser.parse_args()
+
+    use_llama = args.ollama and OLLAMA_AVAILABLE
+    chatbot = PortfolioChatbot(use_real_ai=use_llama, real_ai_backend='ollama', real_ai_model=args.model)
+
+    if use_llama and chatbot.real_ai.available:
+        print("""
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
-║   Welcome to the Portfolio ML AI Chatbot! 🤖🧠            ║
+║   🦙 Portfolio AI Chatbot - Llama FREE Model!             ║
 ║                                                            ║
-║   Powered by TF-IDF & Cosine Similarity                   ║
+║   Powered by Ollama (Llama) - Real AI responses!          ║
 ║   Ask me about projects, skills, games, or AI/ML!         ║
 ║   Type /help for commands or just start chatting!         ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
-    """)
-    print(f"🧠 ML Model loaded with {len(chatbot.tfidf.vocabulary)} vocabulary terms")
+        """)
+        print(f"🦙 Llama model: {chatbot.real_ai.model} (Ollama)")
+    else:
+        print("""
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║   Welcome to the Portfolio ML AI Chatbot! 🤖🧠            ║
+║                                                            ║
+║   ML: TF-IDF + N-grams + BM25 + Cosine Similarity         ║
+║   Use --ollama for free Llama AI (pip install ollama)     ║
+║   Type /help for commands or just start chatting!         ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+        """)
+        print(f"🧠 ML Model loaded with {len(chatbot.tfidf.vocabulary)} vocabulary terms")
     
     learning_mode = False
     learn_phrase = ""

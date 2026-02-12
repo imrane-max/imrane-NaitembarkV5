@@ -1,0 +1,10 @@
+# Chatbot word/knowledge file
+# Format: question phrases | response text (one per line)
+# Lines starting with # are ignored
+# Use | to separate question keywords from response
+
+hobby hobbies interest|I enjoy coding, game development, and exploring AI/ML! 🎮
+morocco country location|I'm from Morocco! 🇲🇦 Check out my portfolio for more.
+github repository code|Find my code at github.com/imrane-max
+blender 3d modeling|I use Blender for 3D assets in game projects! 🎨
+godot engine|I love Godot Engine for game dev - Fragime and Hamood are built with it!

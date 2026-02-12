@@ -5,7 +5,15 @@
   <meta charset="UTF-8">
   <title>Imrane | Portfolio</title>
   <link rel="stylesheet" href="style.css">
+  <!-- AOS - Animate On Scroll -->
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <!-- GLightbox - Lightbox for images -->
+  <link href="https://cdn.jsdelivr.net/npm/glightbox@3.2.0/dist/css/glightbox.min.css" rel="stylesheet">
+  <!-- Sortable.js - Dev: drag to reorder sections -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script async src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+  <!-- Puter.js - Free Llama AI for chat widget - No API key required -->
+  <script async src="https://js.puter.com/v2/"></script>
 </head>
 <body>
 
@@ -23,20 +31,47 @@
       <li><a href="#ai">AI</a></li>
     </ul>
     <div class="nav-actions">
+      <a href="https://github.com/imrane-max/imrane-NaitembarkV5" target="_blank" rel="noopener" class="btn" title="View & Commit on GitHub">
+        <i class="fa-brands fa-github"></i> <span>Commit</span>
+      </a>
+      <button id="signInBtn" class="btn" title="Sign in">
+        <i class="fa-solid fa-right-to-bracket"></i> <span id="signInLabel">Sign In</span>
+      </button>
       <button id="ThemBtn" class="btn" aria-pressed="false" title="Toggle theme">
         <i class="fa-solid fa-moon"></i> <span class="theme-label">Dark</span>
       </button>
     </div>
   </nav>
 
+  <!-- Sign In Modal -->
+  <div id="signIn-modal" class="signIn-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10002;justify-content:center;align-items:center;">
+    <div class="signIn-modal-inner" style="background:#fff;padding:24px;border-radius:12px;width:90%;max-width:340px;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+      <h3 style="margin-bottom:16px;color:#007bff;">🔐 Sign In</h3>
+      <button type="button" id="signIn-dev-btn" class="btn" style="width:100%;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <i class="fa-solid fa-code"></i> Dev Login
+      </button>
+      <div id="signIn-dev-form" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #ddd;">
+        <input type="text" id="signIn-username" placeholder="Username" autocomplete="username" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+        <input type="password" id="signIn-password" placeholder="Password" autocomplete="current-password" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+        <p id="signIn-error" style="color:#c00;font-size:12px;margin:-4px 0 8px;display:none;"></p>
+        <button type="button" id="signIn-submit" class="btn" style="width:100%;">Login</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button type="button" id="signIn-cancel" class="btn" style="flex:1;background:#888;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content - Dev: drag sections to reorder -->
+  <main id="main-sortable">
   <!-- Hero Section -->
-  <section class="hero fade-in">
+  <section class="hero fade-in" data-aos="fade-up" data-section-id="hero">
     <h1>Hello, I'm Imrane</h1>
     <p>Web Developer | GameDev | Student</p>
   </section>
 
   <!-- About Section -->
-  <section id="about" class="section fade-in">
+  <section id="about" class="section fade-in" data-aos="fade-up" data-section-id="about">
     <h2>About Me</h2>
     <p>
       I am Imrane, a motivated individual passionate about technology and creativity.
@@ -45,7 +80,7 @@
   </section>
 
   <!-- Skills Section -->
-  <section id="skills" class="section gray fade-in">
+  <section id="skills" class="section gray fade-in" data-aos="fade-up" data-section-id="skills">
     <h2>Skills</h2>
     <div class="skills">
       <span><img src="HtmlIcon.png" alt="HTML"> HTML</span>
@@ -62,13 +97,15 @@
   </section>
 
   <!-- Projects Section -->
-  <section id="projects" class="section fade-in">
+  <section id="projects" class="section fade-in" data-section-id="projects">
     <h2>Projects</h2>
     <div class="cards fade-in">
-      <div class="card fade-in">
+      <div class="card fade-in" data-aos="fade-up">
         <h3>Fragime</h3>
         <p>
-          <img src="Fragime1.png" alt="Fragime-imax"><br> 
+          <a href="Fragime1.png" class="glightbox" data-gallery="projects" data-title="Fragime - FPS Game">
+            <img src="Fragime1.png" alt="Fragime-imax">
+          </a><br> 
           Simple FPS Game shooter<br> 
           Time: 3weeks<br> 
           Engine: Godot
@@ -78,10 +115,12 @@
         </a>
         
       </div>
-      <div class="card fade-in">
+      <div class="card fade-in" data-aos="fade-up" data-aos-delay="100">
         <h3>Hamood</h3>
         <p>
-          <img src="Hamood.png" alt="hamood-imax"><br>
+          <a href="Hamood.png" class="glightbox" data-gallery="projects" data-title="Hamood - Platform Game">
+            <img src="Hamood.png" alt="hamood-imax">
+          </a><br>
           Simple Platform Game <br> 
           Time: 2weeks <br>
           Engine: Godot
@@ -92,10 +131,12 @@
         
       </div>
 
-      <div class="card fade-in">
+      <div class="card fade-in" data-aos="fade-up" data-aos-delay="200">
         <h3>The Morocco in world</h3>
         <p>
-          <img src="The Morocco in world.png" alt="hamood-imax"><br>
+          <a href="The Morocco in world.png" class="glightbox" data-gallery="projects" data-title="The Morocco in World - Website">
+            <img src="The Morocco in world.png" alt="Morocco site">
+          </a><br>
           Simple Web Site <br> 
           Time: 3h <br>
         </p>
@@ -109,7 +150,7 @@
   </section>
 
   <!-- Demos Section -->
-  <section id="demos" class="section fade-in">
+  <section id="demos" class="section fade-in" data-section-id="demos">
     <h2>Code Examples</h2>
     <p style="text-align: center; margin-bottom: 30px; color: #666;">Reference implementations and educational examples.</p>
     <div class="cards fade-in">
@@ -142,7 +183,7 @@
   </section>
 
   <!-- Mini Games Section -->
-  <section id="games" class="section gray fade-in">
+  <section id="games" class="section gray fade-in" data-section-id="games">
     <h2>Games & Demos</h2>
     <p style="text-align: center; margin-bottom: 30px; color: #666;">Fun interactive games built with vanilla JavaScript, Canvas API, and Godot Engine!</p>
     
@@ -245,9 +286,42 @@
   </section>
 
   <!-- AI & Chatbots Section -->
-  <section id="ai" class="section fade-in">
+  <section id="ai" class="section fade-in" data-section-id="ai">
     <h2>🤖 AI & Chatbot Systems</h2>
     <p style="text-align: center; margin-bottom: 30px; color: #666;">Multiple AI implementations showcasing different approaches to NLP and machine learning.</p>
+
+    <!-- AI Usage Documentation -->
+    <details class="ai-docs" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 15px; border: 1px solid #e0e0e0;">
+      <summary style="cursor: pointer; font-weight: 600; font-size: 1.1em; color: #007bff;">📖 How to Use the AI</summary>
+      <div style="margin-top: 20px; font-size: 14px; line-height: 1.6;">
+        <p><strong>🦙 Free AI Agent (Built-in Chat Widget):</strong></p>
+        <ul style="margin: 8px 0 16px 20px;">
+          <li>Click the <strong>💬</strong> button in the bottom-right corner to open the chat</li>
+          <li><strong>FREE</strong> – Uses Llama 3.3 70B via Puter.js (no API key!)</li>
+          <li>Falls back to ML (TF-IDF) if Puter is unavailable</li>
+          <li>Ask about <strong>projects</strong>, <strong>skills</strong>, <strong>games</strong>, or <strong>contact</strong></li>
+          <li>Click <strong>🎓</strong> in the chat header to teach the bot new Q&amp;A pairs</li>
+        </ul>
+        <p><strong>🦙 Llaga AI (Real Llama 3.3 70B):</strong></p>
+        <ul style="margin: 8px 0 16px 20px;">
+          <li>Open <a href="Llaga-chat.html" target="_blank">Llaga-chat.html</a> for full LLM conversations</li>
+          <li><strong>FREE</strong> - no API key needed (uses Puter.js)</li>
+          <li>Best for: open-ended questions, creative responses, detailed portfolio info</li>
+        </ul>
+        <p><strong>📊 ML Chat / Python Chatbot:</strong></p>
+        <ul style="margin: 8px 0 16px 20px;">
+          <li>Try <a href="ml-chat.html" target="_blank">ML Chat</a> or <a href="ml-python-chat.html" target="_blank">ML Python Chat</a> for TF-IDF + BM25 matching</li>
+          <li>Runs in browser via Pyodide (Python in WebAssembly)</li>
+          <li>Shows confidence scores and learns from your input</li>
+        </ul>
+        <p><strong>🖥️ CLI Chatbot (Local):</strong></p>
+        <ul style="margin: 8px 0 16px 20px;">
+          <li>Download <code>chatbot.py</code> and run: <code>python chatbot.py</code></li>
+          <li>Use <code>--ollama</code> for real AI (requires Ollama installed)</li>
+          <li>Commands: <code>/help</code> <code>/stats</code> <code>/learn</code> <code>/quit</code></li>
+        </ul>
+      </div>
+    </details>
     
     <div class="cards fade-in">
       <!-- Python AI Chatbot -->
@@ -278,11 +352,11 @@
         <a href="Llaga-chat.html" target="_blank"><button class="btn">Chat with Llama AI</button></a>
       </div>
 
-      <!-- Portfolio Chat Widget -->
+      <!-- Free AI Agent (Built-in Chat Widget) -->
       <div class="card fade-in">
-        <h3>💬 Portfolio Chat Widget</h3>
-        <p>Built-in chat widget with Llaga-inspired smart responses. Available in the bottom-right corner of the portfolio!</p>
-        <button class="btn" onclick="document.getElementById('chat-toggle').click()">Open Chat Widget</button>
+        <h3>🦙 Free AI Agent</h3>
+        <p><strong>FREE</strong> – No API key! Uses Llama 3.3 70B via Puter.js. Click the 💬 button to chat. Falls back to ML (TF-IDF) if needed.</p>
+        <button class="btn" onclick="document.getElementById('chat-toggle').click()">Open Free AI Chat</button>
       </div>
 
       <!-- ML Python Chatbot (Browser) -->
@@ -335,10 +409,10 @@
           <td style="padding: 10px; border: 1px solid #212222;">★★★★★ Advanced</td>
         </tr>
         <tr>
-          <td style="padding: 10px; border: 1px solid #212222;"><strong>Widget Chat</strong></td>
-          <td style="padding: 10px; border: 1px solid #212222;">JavaScript Similarity</td>
-          <td style="padding: 10px; border: 1px solid #212222;">Pattern Matching</td>
-          <td style="padding: 10px; border: 1px solid #212222;">★★☆☆☆ Basic</td>
+          <td style="padding: 10px; border: 1px solid #212222;"><strong>Free AI Agent (Widget)</strong></td>
+          <td style="padding: 10px; border: 1px solid #212222;">Llama 3.3 70B (Puter.js) + TF-IDF fallback</td>
+          <td style="padding: 10px; border: 1px solid #212222;">Real LLM - FREE, no API key</td>
+          <td style="padding: 10px; border: 1px solid #212222;">★★★★★ Advanced</td>
         </tr>
         <tr style="background: #2e3b4f;">
           <td style="padding: 10px; border: 1px solid #212222;"><strong>ML Python Chat</strong></td>
@@ -350,7 +424,7 @@
     </div>
 
     <!-- Technologies Used -->
-    <div style="margin-top: 30px; padding: 20px; background: #2e3b4f; border-radius: 15px;">
+    <div style="margin-top: 30px; padding: 20px; background: #eaeaea; border-radius: 15px;.dark-mode {background: #2e3b4f;}">
       <h3 style="margin-bottom: 15px;">🛠️ Technologies & Concepts</h3>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 13px;">
         <div>
@@ -398,7 +472,7 @@
   </section>
 
   <!-- Contact Section -->
-  <section id="contact" class="section gray fade-in">
+  <section id="contact" class="section gray fade-in" data-section-id="contact">
     <h2>Contact</h2>
     <div class="contact-actions">
       <button class="btn" onclick="copyEmail(event)" aria-label="Copy email to clipboard">
@@ -417,14 +491,15 @@
   </section>
 
   <!-- Footer -->
-  <footer class="fade-in">
+  <footer class="fade-in" data-section-id="footer">
     <p>© 2026 Imrane. All rights reserved.</p>
   </footer>
+  </main>
 
-  <!-- Chat Widget (ML-Powered Python Chatbot) -->
+  <!-- Chat Widget (Free AI + ML Fallback) -->
   <div id="chat-widget" class="chat-widget" aria-hidden="true">
     <div class="chat-header">
-      <strong>🧠 ML Chat (Python)</strong>
+      <strong>🦙 Free AI Agent</strong>
       <div style="display:flex;gap:8px;align-items:center;">
         <button id="chat-teach" class="chat-teach-btn" aria-label="Teach bot" title="Teach me something new">🎓</button>
         <button id="chat-close" aria-label="Close chat">✕</button>
@@ -433,10 +508,10 @@
     <div class="chat-messages" id="chat-messages" role="log" aria-live="polite"></div>
     <div id="chat-stats" style="padding:5px 12px;font-size:10px;color:#888;background:#f5f5f5;display:flex;justify-content:space-between;">
       <span>Learned: <strong id="learned-count">0</strong></span>
-      <span>Status: <strong id="ml-status">Loading...</strong></span>
+      <span>🦙 Llama AI: <strong id="ml-status">Connecting...</strong></span>
     </div>
     <form id="chat-form" class="chat-form">
-      <input id="chat-input" class="chat-input" autocomplete="off" placeholder="Ask about projects, skills, or contact..." />
+      <input id="chat-input" class="chat-input" autocomplete="off" placeholder="Ask anything... (Free AI powered)" />
       <button type="submit" class="btn chat-send">Send</button>
     </form>
   </div>
@@ -457,6 +532,9 @@
 
   <button id="chat-toggle" class="chat-toggle" aria-label="Open chat">💬</button>
 
+  <!-- Plugins -->
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/glightbox@3.2.0/dist/js/glightbox.min.js"></script>
   <script src="Script.js"></script>
 </body> 
 </html>
